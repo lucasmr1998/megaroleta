@@ -77,8 +77,12 @@ WSGI_APPLICATION = 'sorteio.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'megasorteio',
+        'USER': 'admin',
+        'PASSWORD': 'qualidade@trunks.57',
+        'HOST': '187.62.153.52',
+        'PORT': '5432',
     }
 }
 
@@ -129,6 +133,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 25000
-DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000000
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800*10  # 50 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800*10  # 50 MB

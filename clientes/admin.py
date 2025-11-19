@@ -45,7 +45,8 @@ marcar_todos_nao_sorteados.short_description = "Marcar todos os clientes como n√
 class ConfiguracaoAdmin(admin.ModelAdmin):
     list_display = ('botao_ativo', 'quantidade_exibida')
 class ClienteAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'numero', 'cpf', 'ticket', 'cidade', 'sorteado')    
+    list_display = ('nome', 'numero', 'cpf', 'ticket', 'cidade', 'sorteado')
+    search_fields = ('nome', 'cpf', 'ticket')    
     actions = [marcar_todos_nao_sorteados]
 
 admin.site.register(ConfiguracaoSite)

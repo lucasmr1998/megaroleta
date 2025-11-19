@@ -2,7 +2,33 @@ from .models import Participante
 from django.contrib import admin
 from clientes.models import Cliente
 import psycopg2
+import csv
+from django.http import HttpResponse
 
+def exportar_para_csv(modeladmin, request, queryset):
+    """
+    Exporta os participantes selecionados para um arquivo CSV.
+    """
+    # Criando a resposta HTTP com o cabeçalho de CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="participantes.csv"'
+
+    # Criando o escritor CSV
+    writer = csv.writer(response)
+
+    # Cabeçalhos das colunas no CSV
+    writer.writerow(['Canal', 'ID Externo', 'Data Participação', 'Incoerente'])
+
+    # Dados dos objetos selecionados
+    for participante in queryset:
+        writer.writerow([
+            participante.canal,
+            participante.id_externo,
+            participante.data_participacao,
+            'Sim' if participante.incoerente else 'Não'
+        ])
+
+    return response
 # Função para conectar ao banco de dados externo
 def conectar_banco_externo():
     try:
@@ -119,7 +145,8 @@ def sincronizar_clientes(modeladmin, request, queryset):
 # Customizando o admin de Participante
 class ParticipanteAdmin(admin.ModelAdmin):
     list_display = ('canal', 'id_externo', 'data_participacao', 'incoerente')
-    actions = [sincronizar_clientes]
+    actions = [sincronizar_clientes, exportar_para_csv]
+    
 
 # Registrando o modelo Participante no admin
 admin.site.register(Participante, ParticipanteAdmin)

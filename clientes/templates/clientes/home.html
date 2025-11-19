@@ -18,7 +18,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #0056b3;
+            background-color: #366AA3;
         }
 
         .container {
@@ -36,7 +36,7 @@
         }
 
         .header h1 {
-            color: #007bff;
+            color: #296395;
         }
 
         form {
@@ -57,7 +57,7 @@
 
         button {
             padding: 10px 20px;
-            background-color: #007bff;
+            background-color: #296395;
             color: white;
             border: none;
             border-radius: 4px;
@@ -121,7 +121,7 @@
 
         .menu-button {
             padding: 10px;
-            background-color: #007bff;
+            background-color: #3784C7;
             color: white;
             border: none;
             border-radius: 4px;
@@ -164,7 +164,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Mega Sorteio</h1>
+            <h1>Baile Do Laéllyo</h1>
         </div>
 
         <form method="get" action="{% url 'clientes:home' %}">
@@ -222,7 +222,7 @@
             {% endif %}
         </div>
     </div>
-
+    {% if user.is_authenticated and user.is_superuser %}
     <div class="menu">
         <button class="menu-button" onclick="toggleMenu()">Menu</button>
         <div class="menu-content">
@@ -230,6 +230,7 @@
             <a href="{% url 'clientes:lista_clientes' %}">Sortear Clientes</a>
         </div>
     </div>
+    {% endif %}
 </body>
 
 </html>

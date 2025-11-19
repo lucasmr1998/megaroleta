@@ -89,5 +89,6 @@ def home(request):
         'clientes': clientes,
         'cpf_query': cpf_query,
         'ganhadores': ganhadores,
-        'config': config
+        'config': config,
+        'user': request.user
     })

@@ -239,6 +239,13 @@
             color: #007bff;
             margin-right: 10px;
         }
+        .loading {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    display: none; /* Inicialmente oculto */
+}
+
     </style>
     <script>
         function toggleMenu() {
@@ -249,7 +256,7 @@
 
 <body>
     <div class="container">
-        <h1>Mega Sorteio</h1>
+        <h1>Baile Do Laéllyo</h1>
 
         <div class="button-container">
             {% if botao_ativo %}
@@ -314,6 +321,27 @@
         mostrarClientesComIntervalo();
     };	
     </script>
+    <script>
+        // Função para mostrar o visual de loading
+        function mostrarLoading(event) {
+            event.preventDefault(); // Previne o envio imediato do formulário
+            const loadingElement = document.getElementById('loading'); // Obtém o elemento de loading
+            loadingElement.style.display = 'block'; // Exibe o loading
+            setTimeout(() => {
+                // Envia o formulário após uma pequena pausa para exibir o loading
+                document.getElementById('sortear-form').submit();
+            }, 3000); // Tempo para mostrar o visual de loading
+        }
+        
+        // Adiciona o evento de clique ao botão de sorteio
+        document.addEventListener('DOMContentLoaded', () => {
+            const sortearForm = document.getElementById('sortear-form');
+            if (sortearForm) {
+                sortearForm.addEventListener('submit', mostrarLoading);
+            }
+        });
+    </script>
+    
 
     <div class="menu">
         <button class="menu-button" onclick="toggleMenu()">Menu</button>
