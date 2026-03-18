@@ -5,129 +5,50 @@
 
 {% block content %}
 
-<style>
-  /* ── KPI Cards ─────────────────────────────────────────────────── */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 26px;
-  }
-  @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-
-  .kpi-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 22px 24px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.07);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .kpi-icon {
-    font-size: 26px;
-    line-height: 1;
-  }
-  .kpi-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #718096;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-  }
-  .kpi-value {
-    font-size: 36px;
-    font-weight: 800;
-    color: #1a202c;
-    line-height: 1;
-  }
-
-  /* ── Charts grid ───────────────────────────────────────────────── */
-  .charts-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 16px;
-    margin-bottom: 26px;
-  }
-  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
-
-  .chart-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 22px 24px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.07);
-  }
-  .chart-card h3 {
-    font-size: 14px;
-    font-weight: 700;
-    color: #2d3748;
-    margin-bottom: 16px;
-  }
-
-  /* ── Chart legend ──────────────────────────────────────────────── */
-  .chart-legend {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #4a5568;
-    font-weight: 600;
-  }
-  .legend-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-</style>
+<div class="page-header">
+    <h1 class="page-title">Painel de Resumo</h1>
+    <p class="page-subtitle">Visão geral dos cadastros, validações e giros realizados na roleta.</p>
+</div>
 
 <!-- KPI Cards -->
-<div class="kpi-grid">
-  <div class="kpi-card">
-    <span class="kpi-icon">👥</span>
-    <span class="kpi-label">Leads (Iniciaram Cadastro)</span>
-    <span class="kpi-value">{{ funil_iniciados }}</span>
-  </div>
-  <div class="kpi-card">
-    <span class="kpi-icon">✅</span>
-    <span class="kpi-label">Validaram WhatsApp</span>
-    <span class="kpi-value">{{ funil_validados }}</span>
-  </div>
-  <div class="kpi-card">
-    <span class="kpi-icon">🎰</span>
-    <span class="kpi-label">Jogadores (Giraram)</span>
-    <span class="kpi-value">{{ funil_jogadores }}</span>
-  </div>
-  <div class="kpi-card">
-    <span class="kpi-icon">🔄</span>
-    <span class="kpi-label">Total de Giros Realizados</span>
-    <span class="kpi-value">{{ total_giros }}</span>
-  </div>
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-label">Leads (Iniciaram)</span>
+        <span class="stat-value">{{ funil_iniciados }}</span>
+        <span class="stat-subtext">Conversas abertas hoje</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Validaram WhatsApp</span>
+        <span class="stat-value">{{ funil_validados }}</span>
+        <span class="stat-subtext">Usuários que receberam PIN</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Jogadores (Giraram)</span>
+        <span class="stat-value">{{ funil_jogadores }}</span>
+        <span class="stat-subtext">Giros com prêmio/tentativa</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Total de Giros</span>
+        <span class="stat-value">{{ total_giros }}</span>
+        <span class="stat-subtext">Acumulado no sistema</span>
+    </div>
 </div>
 
 <!-- Charts -->
-<div style="margin-bottom: 26px;">
-  <!-- Line Chart: 3 séries -->
-  <div class="chart-card">
+<div class="chart-card">
     <h3>📈 Evolução Diária (Últimos 7 dias)</h3>
     <div class="chart-legend">
-      <span class="legend-item"><span class="legend-dot" style="background:#6c63ff;"></span>Cadastros</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#38b2ac;"></span>Validações</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#ed8936;"></span>Giros</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#6c63ff;"></span>Cadastros</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#38b2ac;"></span>Validações</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#ed8936;"></span>Giros</span>
     </div>
-    <canvas id="girosChart" height="60"></canvas>
-  </div>
+    <div style="height: 300px;">
+        <canvas id="girosChart"></canvas>
+    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-
-    // ── Evolução Diária (3 linhas) ──────────────────────────────────────────
     const ctxGiros = document.getElementById('girosChart').getContext('2d');
     new Chart(ctxGiros, {
         type: 'line',
@@ -138,80 +59,101 @@ document.addEventListener('DOMContentLoaded', function () {
                     label: 'Cadastros',
                     data: {{ chart_data_cadastros|safe }},
                     borderColor: '#6c63ff',
-                    backgroundColor: 'rgba(108,99,255,0.08)',
-                    borderWidth: 2.5,
-                    tension: 0.35,
+                    backgroundColor: 'rgba(108,99,255,0.06)',
+                    borderWidth: 3,
+                    tension: 0.4,
                     fill: true,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#6c63ff',
+                    pointRadius: 0,
+                    pointHoverRadius: 6
                 },
                 {
                     label: 'Validações',
                     data: {{ chart_data_validacoes|safe }},
                     borderColor: '#38b2ac',
-                    backgroundColor: 'rgba(56,178,172,0.08)',
-                    borderWidth: 2.5,
-                    tension: 0.35,
+                    backgroundColor: 'rgba(56,178,172,0.06)',
+                    borderWidth: 3,
+                    tension: 0.4,
                     fill: true,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#38b2ac',
+                    pointRadius: 0,
+                    pointHoverRadius: 6
                 },
                 {
                     label: 'Giros',
                     data: {{ chart_data_giros|safe }},
                     borderColor: '#ed8936',
-                    backgroundColor: 'rgba(237,137,54,0.08)',
-                    borderWidth: 2.5,
-                    tension: 0.35,
+                    backgroundColor: 'rgba(237,137,54,0.06)',
+                    borderWidth: 3,
+                    tension: 0.4,
                     fill: true,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#ed8936',
+                    pointRadius: 0,
+                    pointHoverRadius: 6
                 }
             ]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
-                tooltip: { padding: 10 }
+                tooltip: { 
+                    padding: 12,
+                    backgroundColor: '#1a202c',
+                    titleFont: { size: 13 },
+                    bodyFont: { size: 13 },
+                    cornerRadius: 8
+                }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: '#f3f4f6' },
+                    ticks: { color: '#9ca3af', font: { size: 11 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#9ca3af', font: { size: 11 } }
+                }
             }
         }
     });
-
 });
 </script>
 
 <!-- Últimos Ganhadores -->
-<div class="data-table-container" style="overflow-x: auto; padding-top: 28px;">
-    <h3 style="margin-bottom: 16px;">🏆 Últimos Ganhadores</h3>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Cidade</th>
-                <th>Prêmio</th>
-                <th>Data</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for g in ganhadores %}
-            <tr>
-                <td><strong>{{ g.nome }}</strong></td>
-                <td>{{ g.cidade|default:"—" }}</td>
-                <td><span class="badge badge-success">{{ g.premio }}</span></td>
-                <td style="color:#718096; font-size:13px; white-space:nowrap;">{{ g.data_criacao|date:"d/m/Y H:i" }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" style="text-align:center; padding: 40px; color: #999;">Nenhum ganhador ainda.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="data-table-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: 16px; font-weight: 600; color: #111827;">🏆 Últimos Ganhadores</h3>
+        <a href="{% url 'dashboard_giros' %}" style="font-size: 13px; color: var(--primary-blue); text-decoration: none; font-weight: 500;">Ver todos &rarr;</a>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Cidade</th>
+                    <th>Prêmio</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in ganhadores %}
+                <tr>
+                    <td><strong style="color: #111827;">{{ g.nome }}</strong></td>
+                    <td style="color: #4b5563;">{{ g.cidade|default:"—" }}</td>
+                    <td><span class="badge badge-success">{{ g.premio }}</span></td>
+                    <td style="color: var(--text-muted); font-size: 13px; white-space:nowrap;">{{ g.data_criacao|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="text-align:center; padding: 60px; color: #9ca3af;">Nenhum ganhador registrado ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
+{% endblock %}
 
 {% endblock %}
