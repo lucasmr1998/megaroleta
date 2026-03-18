@@ -1,235 +1,303 @@
 {% extends 'roleta/dashboard/base.html' %}
 
-{% block title %}Gestão de Prêmios - Admin Roleta{% endblock %}
-{% block page_title %}Estoque de Prêmios{% endblock %}
+{% block title %}Pr&ecirc;mios - Admin Roleta{% endblock %}
 
 {% block content %}
 
 <!-- Modal: Como funciona o Peso -->
-<div id="modal-peso"
-    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-    <div
-        style="background:#fff; border-radius:16px; max-width:540px; width:100%; padding:32px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-        <button onclick="document.getElementById('modal-peso').style.display='none'"
-            style="position:absolute; top:16px; right:16px; border:none; background:none; font-size:20px; cursor:pointer; color:#94a3b8;">✕</button>
+<div id="modal-peso" class="modal-overlay">
+    <div class="modal-content">
+        <button onclick="document.getElementById('modal-peso').style.display='none'" class="modal-close">&times;</button>
 
         <div style="text-align:center; margin-bottom:24px;">
-            <div
-                style="background:#667eea22; width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
-                <i class="fas fa-balance-scale" style="font-size:24px; color:#667eea;"></i>
+            <div style="background:var(--primary-light); width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                <i class="fas fa-balance-scale" style="font-size:22px; color:var(--primary);"></i>
             </div>
-            <h3 style="margin:0; color:#1e293b;">Como funciona o Peso (Frequência)?</h3>
+            <h3 style="margin:0; color:var(--text-main);">Como funciona o Peso (Frequ&ecirc;ncia)?</h3>
         </div>
 
-        <p style="color:#475569; margin-bottom:16px; line-height:1.6;">
-            O sistema usa <strong>sorteio ponderado</strong>: quanto maior o peso de um prêmio,
-            maior a chance de ele ser sorteado. A probabilidade de cada prêmio é calculada como:
+        <p style="color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+            O sistema usa <strong>sorteio ponderado</strong>: quanto maior o peso de um pr&ecirc;mio,
+            maior a chance de ele ser sorteado.
         </p>
 
-        <div
-            style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:16px; text-align:center;">
-            <code style="font-size:15px; color:#667eea; font-weight:700;">
-                Chance (%) = Peso do prêmio ÷ Soma de todos os pesos ({{ soma_pesos }}) × 100
+        <div class="alert alert-info" style="text-align:center; margin-bottom:16px;">
+            <code style="font-size:14px; font-weight:700; color:var(--primary);">
+                Chance (%) = Peso &divide; Soma total ({{ soma_pesos }}) &times; 100
             </code>
         </div>
 
-        <p style="color:#475569; margin-bottom:16px; line-height:1.6;"><strong>Porcentagem Real de Chance:</strong></p>
         <div style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;">
-            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <table class="data-table">
                 <thead>
-                    <tr style="background:#f1f5f9; position: sticky; top: 0; z-index: 1;">
-                        <th style="padding:10px 12px; text-align:left; border-radius:6px 0 0 0;">Prêmio</th>
-                        <th style="padding:10px 12px; text-align:center;">Peso</th>
-                        <th style="padding:10px 12px; text-align:center; border-radius:0 6px 0 0;">Chance</th>
+                    <tr>
+                        <th>Pr&ecirc;mio</th>
+                        <th style="text-align:center;">Peso</th>
+                        <th style="text-align:center;">Chance</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for p in premios_com_chance %}
-                    <tr style="{% if forloop.counter|divisibleby:2 %}background:#f8fafc;{% endif %}">
-                        <td style="padding:8px 12px; border-bottom: 1px solid #f1f5f9;">
+                    <tr>
+                        <td>
                             <strong>{{ p.nome }}</strong>
-                            {% if p.quantidade <= 0 %} <span style="font-size: 10px; color: #ef4444; margin-left: 4px;">
-                                (ZERADO)</span>
-                                {% endif %}
+                            {% if p.quantidade <= 0 %}<span class="badge badge-danger" style="margin-left:4px;">ZERADO</span>{% endif %}
                         </td>
-                        <td style="padding:8px 12px; text-align:center; border-bottom: 1px solid #f1f5f9;">{{
-                            p.probabilidade }}</td>
-                        <td style="padding:8px 12px; text-align:center; border-bottom: 1px solid #f1f5f9;">
-                            <span
-                                style="font-weight: 700; color: {% if p.chance > 15 %}#22c55e{% elif p.chance > 5 %}#3b82f6{% else %}#f59e0b{% endif %};">
+                        <td style="text-align:center;">{{ p.probabilidade }}</td>
+                        <td style="text-align:center;">
+                            <span class="font-bold" style="color: {% if p.chance > 15 %}var(--success){% elif p.chance > 5 %}var(--primary){% else %}var(--warning){% endif %};">
                                 {{ p.chance }}%
                             </span>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3" style="padding: 20px; text-align: center; color: #94a3b8;">Nenhum prêmio
-                            cadastrado.</td>
+                        <td colspan="3" class="text-center text-muted" style="padding:20px;">Nenhum pr&ecirc;mio cadastrado.</td>
                     </tr>
                     {% endfor %}
-                    <tr style="background:#f1f5f9; font-weight:700;">
-                        <td style="padding:10px 12px;">TOTAL</td>
-                        <td style="padding:10px 12px; text-align:center;">{{ soma_pesos }}</td>
-                        <td style="padding:10px 12px; text-align:center;">100%</td>
+                    <tr style="background:var(--border-light); font-weight:700;">
+                        <td style="padding:10px 14px;">TOTAL</td>
+                        <td style="padding:10px 14px; text-align:center;">{{ soma_pesos }}</td>
+                        <td style="padding:10px 14px; text-align:center;">100%</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <div
-            style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:14px; font-size:13px; color:#1e40af; line-height:1.6;">
-            <i class="fas fa-lightbulb" style="margin-right:6px;"></i>
-            <strong>Dica:</strong> Os valores absolutos não importam — só a proporção entre eles.
-            Peso 70/20/10 é igual a peso 7/2/1. Apenas prêmios com <strong>estoque &gt; 0</strong>
-            e com a <strong>cidade correta</strong> do cliente entram no sorteio.
+        <div class="alert alert-info">
+            <i class="fas fa-lightbulb"></i>
+            <span><strong>Dica:</strong> S&oacute; a propor&ccedil;&atilde;o importa. Peso 70/20/10 = 7/2/1. Apenas pr&ecirc;mios com <strong>estoque &gt; 0</strong> e <strong>cidade correta</strong> entram no sorteio.</span>
         </div>
     </div>
 </div>
 
-<div style="margin-bottom: 20px; background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
-        <h3 style="margin:0;">Adicionar Novo Prêmio</h3>
-        <button onclick="document.getElementById('modal-peso').style.display='flex'"
-            style="display:inline-flex; align-items:center; gap:7px; background:#667eea11; color:#667eea; border:1px solid #667eea44; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; transition:background 0.2s;"
-            onmouseover="this.style.background='#667eea22'" onmouseout="this.style.background='#667eea11'">
-            <i class="fas fa-question-circle"></i> Como funciona o Peso?
+<!-- Modal: Editar Prêmio (preenchido via JS) -->
+<div id="modal-editar" class="modal-overlay">
+    <div class="modal-content" style="max-width:580px;">
+        <button onclick="document.getElementById('modal-editar').style.display='none'" class="modal-close">&times;</button>
+
+        <h3 style="margin-bottom:20px; color:var(--text-main);"><i class="fas fa-edit" style="color:var(--primary); margin-right:8px;"></i>Editar Pr&ecirc;mio</h3>
+        <div id="modal-editar-nome" class="font-bold" style="font-size:16px; margin-bottom:20px; color:var(--text-secondary);"></div>
+
+        <form method="post" id="form-editar-premio">
+            {% csrf_token %}
+            <input type="hidden" name="premio_id" id="edit-premio-id">
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Quantidade</label>
+                    <input type="number" name="quantidade" id="edit-quantidade" class="form-control" required>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Peso (Frequ&ecirc;ncia)</label>
+                    <input type="number" name="probabilidade" id="edit-probabilidade" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Posi&ccedil;&otilde;es na Roleta (0-12)</label>
+                <input type="text" name="posicoes" id="edit-posicoes" class="form-control" placeholder="Ex: 4,7">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Mensagem de Vit&oacute;ria</label>
+                <textarea name="mensagem_vitoria" id="edit-mensagem" class="form-control" rows="3" style="resize:vertical;"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Cidades Permitidas <span class="text-muted text-xs">(vazio = todas)</span></label>
+                <div id="edit-cidades-container" style="max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:10px;">
+                    {% for c in cidades %}
+                    <label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:var(--text-secondary); cursor:pointer;">
+                        <input type="checkbox" name="cidades" value="{{ c.id }}" class="edit-cidade-cb" data-cidade-id="{{ c.id }}">
+                        {{ c.nome }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button type="submit" class="btn-primary" style="flex:1; padding:12px; justify-content:center;">
+                    <i class="fas fa-save"></i> Salvar Altera&ccedil;&otilde;es
+                </button>
+                <button type="button" onclick="document.getElementById('modal-editar').style.display='none'" class="btn-secondary" style="padding:12px;">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Adicionar Novo Prêmio -->
+<div id="modal-adicionar" class="modal-overlay">
+    <div class="modal-content" style="max-width:580px;">
+        <button onclick="document.getElementById('modal-adicionar').style.display='none'" class="modal-close">&times;</button>
+
+        <h3 style="margin-bottom:20px; color:var(--text-main);"><i class="fas fa-plus-circle" style="color:var(--success); margin-right:8px;"></i>Novo Pr&ecirc;mio</h3>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="novo_premio">
+
+            <div class="form-group">
+                <label class="form-label">Nome do Pr&ecirc;mio</label>
+                <input type="text" name="nome" placeholder="Ex: Roteador Wi-Fi 6" required class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Mensagem de Vit&oacute;ria</label>
+                <textarea name="mensagem_vitoria" class="form-control" rows="2" placeholder="Ex: Parab&eacute;ns! Voc&ecirc; ganhou um PIX!" required style="resize:vertical;"></textarea>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:14px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Quantidade</label>
+                    <input type="number" name="quantidade" value="1" required class="form-control">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Peso</label>
+                    <input type="number" name="probabilidade" value="1" required class="form-control">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Posi&ccedil;&otilde;es (0-12)</label>
+                    <input type="text" name="posicoes" placeholder="Ex: 2,5" required class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Cidades Permitidas <span class="text-muted text-xs">(vazio = todas)</span></label>
+                <div style="max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:10px;">
+                    {% for c in cidades %}
+                    <label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:var(--text-secondary); cursor:pointer;">
+                        <input type="checkbox" name="cidades" value="{{ c.id }}"> {{ c.nome }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button type="submit" class="btn-primary" style="flex:1; padding:12px; justify-content:center;">
+                    <i class="fas fa-plus"></i> Adicionar Pr&ecirc;mio
+                </button>
+                <button type="button" onclick="document.getElementById('modal-adicionar').style.display='none'" class="btn-secondary" style="padding:12px;">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Header -->
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1 class="page-title">Pr&ecirc;mios</h1>
+        <p class="page-subtitle">Gerencie o cat&aacute;logo de pr&ecirc;mios da roleta.</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <button onclick="document.getElementById('modal-adicionar').style.display='flex'" class="btn-primary">
+            <i class="fas fa-plus"></i> Novo Pr&ecirc;mio
+        </button>
+        <button onclick="document.getElementById('modal-peso').style.display='flex'" class="btn-secondary">
+            <i class="fas fa-question-circle"></i> Peso?
         </button>
     </div>
-    <form method="post" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="novo_premio">
-
-        <div style="flex: 1; min-width: 200px;">
-            <label style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">Nome
-                do Prêmio</label>
-            <input type="text" name="nome" placeholder="Ex: Roteador Wi-Fi 6" required
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-        </div>
-        <div style="flex: 1; min-width: 150px;">
-            <label
-                style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">Cidades
-                (Vazio = Todas)</label>
-            <select name="cidades" multiple
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; height: 42px;"
-                title="Segure Ctrl/Cmd para selecionar várias">
-                {% for c in cidades %}
-                <option value="{{ c.id }}">{{ c.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="width: 100px;">
-            <label
-                style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">Quantidade</label>
-            <input type="number" name="quantidade" value="1" required
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-        </div>
-        <div style="width: 100px;">
-            <label style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">
-                Peso
-                <button type="button" onclick="document.getElementById('modal-peso').style.display='flex'"
-                    style="background:none; border:none; color:#667eea; cursor:pointer; padding:0 0 0 3px; font-size:12px;"
-                    title="Como funciona?">
-                    <i class="fas fa-question-circle"></i>
-                </button>
-            </label>
-            <input type="number" name="probabilidade" value="1" title="Maior = Mais frequente" required
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-        </div>
-        <input type="text" name="posicoes" placeholder="Ex: 2,5" required
-            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-</div>
-<div style="flex: 2; min-width: 250px;">
-    <label style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">Mensagem
-        personalizada (Alerta)</label>
-    <input type="text" name="mensagem_vitoria" placeholder="Ex: Parabéns! Você ganhou um PIX!" required
-        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-</div>
-<div>
-    <button type="submit" class="btn-primary" style="padding: 10px 20px; white-space: nowrap;">
-        <i class="fas fa-plus"></i> Adicionar Prêmio
-    </button>
-</div>
-</form>
 </div>
 
+<!-- Tabela de Prêmios (somente leitura, edição via modal) -->
 <div class="data-table-container">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Prêmio</th>
-                <th>Localidade</th>
-                <th>Quantidade Atual</th>
-                <th>
-                    Peso (Frequência)
-                    <button type="button" onclick="document.getElementById('modal-peso').style.display='flex'"
-                        style="background:none; border:none; color:#667eea; cursor:pointer; padding:0 0 0 4px; font-size:12px;"
-                        title="Como funciona o Peso?">
-                        <i class="fas fa-question-circle"></i>
-                    </button>
-                </th>
-                <th>Posições (0-12)</th>
-                <th>Mensagem de Vitória (Alerta)</th>
-                <th>Ação</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in premios %}
-            <tr>
-                <td><strong>{{ p.nome }}</strong></td>
-                <td>
-                    <select name="cidades" multiple form="form_premio_{{ p.id }}"
-                        style="width: 150px; padding: 5px; border: 1px solid #ddd; border-radius: 8px; height: 60px;"
-                        title="Segure Ctrl/Cmd para selecionar várias">
-                        {% for c in cidades %}
-                        <option value="{{ c.id }}" {% if c in p.cidades_permitidas.all %} selected {% endif %}>
-                            {{ c.nome }}
-                        </option>
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Pr&ecirc;mio</th>
+                    <th>Cidades</th>
+                    <th style="text-align:center;">Estoque</th>
+                    <th style="text-align:center;">Peso</th>
+                    <th style="text-align:center;">Chance</th>
+                    <th>Mensagem</th>
+                    <th>A&ccedil;&otilde;es</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in premios %}
+                <tr>
+                    <td><strong>{{ p.nome }}</strong></td>
+                    <td style="max-width:180px;">
+                        <div style="display:flex; flex-wrap:wrap; gap:3px;">
+                            {% for c in p.cidades_permitidas.all %}
+                            <span class="badge badge-info" style="font-size:10px;">{{ c.nome }}</span>
+                            {% empty %}
+                            <span class="badge" style="background:var(--border-light); color:var(--text-muted); font-size:10px;">Todas</span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td style="text-align:center;">
+                        {% if p.quantidade <= 0 %}
+                        <span class="badge badge-danger">{{ p.quantidade }}</span>
+                        {% elif p.quantidade <= 5 %}
+                        <span class="badge badge-warning">{{ p.quantidade }}</span>
+                        {% else %}
+                        <span class="font-bold">{{ p.quantidade }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center;">{{ p.probabilidade }}</td>
+                    <td style="text-align:center;">
+                        {% for pc in premios_com_chance %}
+                            {% if pc.nome == p.nome %}
+                            <span class="font-bold" style="color:{% if pc.chance > 15 %}var(--success){% elif pc.chance > 5 %}var(--primary){% else %}var(--warning){% endif %};">{{ pc.chance }}%</span>
+                            {% endif %}
                         {% endfor %}
-                    </select>
-                </td>
-                <td>
-                    <input type="number" name="quantidade" value="{{ p.quantidade }}" form="form_premio_{{ p.id }}"
-                        style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
-                </td>
-                <td>
-                    <input type="number" name="probabilidade" value="{{ p.probabilidade }}"
-                        form="form_premio_{{ p.id }}"
-                        style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;"
-                        title="Maior o peso, maior a chance">
-                </td>
-                <td>
-                    <input type="text" name="posicoes" value="{{ p.posicoes }}" form="form_premio_{{ p.id }}"
-                        style="width: 100px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;"
-                        placeholder="Ex: 4,7">
-                </td>
-                <td>
-                    <textarea name="mensagem_vitoria" form="form_premio_{{ p.id }}"
-                        style="width: 250px; padding: 8px; border: 1px solid #ddd; border-radius: 8px; height: 60px;">{{ p.mensagem_vitoria }}</textarea>
-                </td>
-                <td>
-                    <form method="post" id="form_premio_{{ p.id }}" style="display:inline;">
-                        {% csrf_token %}
-                        <input type="hidden" name="premio_id" value="{{ p.id }}">
-                        <button type="submit" class="badge badge-success" style="border:none; cursor:pointer;">
-                            <i class="fas fa-save"></i> Atualizar
+                    </td>
+                    <td style="max-width:200px;">
+                        <span class="text-sm text-muted" style="line-height:1.3; word-break:break-word;">{{ p.mensagem_vitoria|truncatechars:60 }}</span>
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <button type="button" class="btn-primary btn-sm" onclick="abrirModalEditar({{ p.id }}, '{{ p.nome|escapejs }}', {{ p.quantidade }}, {{ p.probabilidade }}, '{{ p.posicoes|escapejs }}', '{{ p.mensagem_vitoria|escapejs }}', [{% for c in p.cidades_permitidas.all %}{{ c.id }}{% if not forloop.last %},{% endif %}{% endfor %}])">
+                            <i class="fas fa-edit"></i> Editar
                         </button>
-                    </form>
-                </td>
-                <td>
-                    <form method="post" style="display:inline;">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="excluir_premio">
-                        <input type="hidden" name="premio_id" value="{{ p.id }}">
-                        <button type="submit" class="badge badge-success"
-                            style="background: #fee2e2; color: #b91c1c; border:none; cursor:pointer;"
-                            onclick="return confirm('Tem certeza que deseja apagar o prêmio {{ p.nome }}?');">
-                            <i class="fas fa-trash"></i> Apagar
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                        <form method="post" style="display:inline; margin-left:4px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="excluir_premio">
+                            <input type="hidden" name="premio_id" value="{{ p.id }}">
+                            <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Apagar o pr\u00eamio {{ p.nome|escapejs }}?');">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center" style="padding:40px; color:var(--text-light);">Nenhum pr&ecirc;mio cadastrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
+<script>
+function abrirModalEditar(id, nome, quantidade, probabilidade, posicoes, mensagem, cidadesIds) {
+    document.getElementById('edit-premio-id').value = id;
+    document.getElementById('modal-editar-nome').textContent = nome;
+    document.getElementById('edit-quantidade').value = quantidade;
+    document.getElementById('edit-probabilidade').value = probabilidade;
+    document.getElementById('edit-posicoes').value = posicoes;
+    document.getElementById('edit-mensagem').value = mensagem;
+
+    // Reset e marcar checkboxes de cidades
+    document.querySelectorAll('.edit-cidade-cb').forEach(function(cb) {
+        cb.checked = cidadesIds.includes(parseInt(cb.dataset.cidadeId));
+    });
+
+    document.getElementById('modal-editar').style.display = 'flex';
+}
+
+// Fechar modais ao clicar no overlay
+document.querySelectorAll('.modal-overlay').forEach(function(modal) {
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+});
+</script>
+
 {% endblock %}

@@ -169,3 +169,49 @@ class HubsoftService:
         except Exception as e:
             print(f"Erro ao consultar_cidade_cliente_cpf na HubsoftService: {e}")
             return None
+
+    @staticmethod
+    def consultar_clientes_por_cidade():
+        """
+        Retorna um dict {cidade: quantidade_clientes} com todos os clientes ativos do Hubsoft.
+        """
+        import psycopg2
+
+        try:
+            connection = psycopg2.connect(
+                user="mega_leitura",
+                password="4630a1512ee8e738f935a73a65cebf75b07fcab5",
+                host="177.10.118.77",
+                port="9432",
+                database="hubsoft"
+            )
+
+            sql_query = """
+                SELECT
+                    ci.nome AS cidade,
+                    COUNT(DISTINCT cli.id_cliente) AS total
+                FROM
+                    cliente cli
+                JOIN
+                    cliente_servico cs ON cli.id_cliente = cs.id_cliente
+                JOIN
+                    cliente_servico_endereco cse ON cs.id_cliente_servico = cse.id_cliente_servico
+                JOIN
+                    endereco_numero en ON cse.id_endereco_numero = en.id_endereco_numero
+                JOIN
+                    cidade ci ON en.id_cidade = ci.id_cidade
+                GROUP BY
+                    ci.nome
+                ORDER BY
+                    COUNT(DISTINCT cli.id_cliente) DESC;
+            """
+
+            with connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(sql_query)
+                    rows = cursor.fetchall()
+
+            return {row[0].strip(): row[1] for row in rows if row[0]}
+        except Exception as e:
+            print(f"Erro ao consultar_clientes_por_cidade na HubsoftService: {e}")
+            return {}

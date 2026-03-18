@@ -8,82 +8,79 @@
     <title>{% block title %}Dashboard Roleta{% endblock %}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{% static 'roleta/css/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'roleta/css/dashboard.css' %}?v=2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-
-    <header class="top-header">
-        <div class="header-left">
-            <i class="fas fa-bolt" style="color: var(--primary-blue); font-size: 20px;"></i>
-            <span style="font-weight: 800; font-size: 18px; letter-spacing: -0.5px;">MegaLink</span>
-            <div class="header-module-label">Módulo Roleta</div>
-        </div>
-        <div class="header-right">
-            <div style="display: flex; align-items: center; gap: 16px; color: var(--text-muted); font-size: 14px;">
-                <i class="far fa-bell"></i>
-                <i class="far fa-user-circle"></i>
-                <span>{{ request.user.username }}</span>
-            </div>
-        </div>
-    </header>
-
     <div class="app-container">
         <aside class="sidebar">
-            <div class="sidebar-label">Navegação</div>
-            <nav>
-                <a href="{% url 'dashboard_home' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
-                    <i class="fas fa-chart-line"></i> Resumo
-                </a>
-                <a href="{% url 'dashboard_premios' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_premios' %}active{% endif %}">
-                    <i class="fas fa-gift"></i> Prêmios
-                </a>
-                <a href="{% url 'dashboard_participantes' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_participantes' %}active{% endif %}">
-                    <i class="fas fa-users"></i> Membros
-                </a>
-                <a href="{% url 'dashboard_cidades' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_cidades' %}active{% endif %}">
-                    <i class="fas fa-map-marker-alt"></i> Cidades
-                </a>
-            </nav>
+            <div class="sidebar-brand">Roleta</div>
 
-            <div class="sidebar-label">Operação</div>
-            <nav>
-                <a href="{% url 'dashboard_giros' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_giros' %}active{% endif %}">
-                    <i class="fas fa-history"></i> Histórico
-                </a>
-                <a href="{% url 'dashboard_assets' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_assets' %}active{% endif %}">
-                    <i class="fas fa-paint-brush"></i> Visual
-                </a>
-                <a href="{% url 'dashboard_gamificacao' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_gamificacao' %}active{% endif %}">
-                    <i class="fas fa-gamepad"></i> Gamificação
-                </a>
-            </nav>
+            <div class="sidebar-nav">
+                <nav>
+                    <a href="{% url 'dashboard_home' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                    <a href="{% url 'dashboard_premios' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_premios' %}active{% endif %}">
+                        <i class="fas fa-gift"></i> Pr&ecirc;mios
+                    </a>
+                    <a href="{% url 'dashboard_participantes' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_participantes' %}active{% endif %}">
+                        <i class="fas fa-users"></i> Membros
+                    </a>
+                    <a href="{% url 'dashboard_cidades' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_cidades' %}active{% endif %}">
+                        <i class="fas fa-map-marker-alt"></i> Cidades
+                    </a>
 
-            <div class="sidebar-label">Sistema</div>
-            <nav>
+                    <a href="{% url 'dashboard_relatorios' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_relatorios' %}active{% endif %}">
+                        <i class="fas fa-chart-bar"></i> Relat&oacute;rios
+                    </a>
+
+                    <div class="sidebar-section-label">Opera&ccedil;&atilde;o</div>
+
+                    <a href="{% url 'dashboard_giros' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_giros' %}active{% endif %}">
+                        <i class="fas fa-history"></i> Hist&oacute;rico
+                    </a>
+                    <a href="{% url 'dashboard_assets' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_assets' %}active{% endif %}">
+                        <i class="fas fa-image"></i> Visual
+                    </a>
+                    <a href="{% url 'dashboard_gamificacao' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_gamificacao' %}active{% endif %}">
+                        <i class="fas fa-gamepad"></i> Gamifica&ccedil;&atilde;o
+                    </a>
+
+                    <div class="sidebar-section-label">Suporte</div>
+
+                    <a href="{% url 'documentacao' %}"
+                        class="nav-item {% if request.resolver_match.url_name == 'documentacao' %}active{% endif %}">
+                        <i class="fas fa-book"></i> Documenta&ccedil;&atilde;o
+                    </a>
+                </nav>
+            </div>
+
+            <div class="sidebar-footer">
                 <a href="{% url 'dashboard_config' %}"
                     class="nav-item {% if request.resolver_match.url_name == 'dashboard_config' %}active{% endif %}">
-                    <i class="fas fa-cog"></i> Configurações
+                    <i class="fas fa-cog"></i> Configura&ccedil;&otilde;es
                 </a>
                 <a href="{% url 'roleta_index' %}" class="nav-item" target="_blank">
                     <i class="fas fa-external-link-alt"></i> Ver Roleta
                 </a>
-            </nav>
+            </div>
         </aside>
 
         <main class="main-content">
             {% if messages %}
                 {% for message in messages %}
-                <div style="padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; background: #dcfce7; color: #166534; font-size: 14px; border: 1px solid #bbf7d0;">
-                    <i class="fas fa-check-circle" style="margin-right: 8px;"></i> {{ message }}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> {{ message }}
                 </div>
                 {% endfor %}
             {% endif %}

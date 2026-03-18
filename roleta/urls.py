@@ -17,6 +17,7 @@ urlpatterns = [
     path('dashboard/assets/', views.dashboard_assets, name='dashboard_assets'),
     path('dashboard/config/', views.dashboard_config, name='dashboard_config'),
     path('dashboard/gamificacao/', views.dashboard_gamificacao, name='dashboard_gamificacao'),
+    path('dashboard/relatorios/', views.dashboard_relatorios, name='dashboard_relatorios'),
     path('verificar-cliente/', views.verificar_cliente, name='verificar_cliente'),
     path('solicitar-otp/', views.solicitar_otp, name='solicitar_otp'),
     path('validar-otp/', views.validar_otp, name='validar_otp'),

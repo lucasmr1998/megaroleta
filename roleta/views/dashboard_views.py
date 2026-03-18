@@ -3,13 +3,15 @@ from django.contrib import messages
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Count, Q
-from django.db.models.functions import TruncDate
+from django.db.models import Count, Q, Sum, Avg, F
+from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
 from django.http import HttpResponse
+from django.core.paginator import Paginator
 from roleta.models import PremioRoleta, ParticipanteRoleta, RouletteAsset, RoletaConfig, MembroClube, NivelClube, RegraPontuacao, ExtratoPontuacao, Cidade
 import csv
 import json
 from datetime import datetime, timedelta
+from roleta.services.hubsoft_service import HubsoftService
 
 def admin_login(request):
     if request.method == 'POST':
@@ -33,6 +35,43 @@ def dashboard_home(request):
     membros_jogadores = MembroClube.objects.filter(giros__isnull=False).distinct().count()
     total_giros       = ParticipanteRoleta.objects.count()
 
+    # ── Variação percentual (últimos 7 dias vs 7 dias anteriores) ──────────
+    hoje = datetime.now().date()
+    inicio_atual   = hoje - timedelta(days=6)
+    inicio_anterior = hoje - timedelta(days=13)
+
+    def calcular_variacao(qs_atual, qs_anterior):
+        atual = qs_atual
+        anterior = qs_anterior
+        if anterior == 0:
+            return (100, 'up') if atual > 0 else (0, 'neutral')
+        variacao = round(((atual - anterior) / anterior) * 100)
+        if variacao > 0:
+            return (variacao, 'up')
+        elif variacao < 0:
+            return (abs(variacao), 'down')
+        return (0, 'neutral')
+
+    # Iniciados
+    iniciados_atual = MembroClube.objects.filter(data_cadastro__date__gte=inicio_atual).count()
+    iniciados_anterior = MembroClube.objects.filter(data_cadastro__date__gte=inicio_anterior, data_cadastro__date__lt=inicio_atual).count()
+    var_iniciados = calcular_variacao(iniciados_atual, iniciados_anterior)
+
+    # Validados
+    validados_atual = ExtratoPontuacao.objects.filter(regra__gatilho='telefone_verificado', data_recebimento__date__gte=inicio_atual).count()
+    validados_anterior = ExtratoPontuacao.objects.filter(regra__gatilho='telefone_verificado', data_recebimento__date__gte=inicio_anterior, data_recebimento__date__lt=inicio_atual).count()
+    var_validados = calcular_variacao(validados_atual, validados_anterior)
+
+    # Jogadores
+    jogadores_atual = ParticipanteRoleta.objects.filter(data_criacao__date__gte=inicio_atual).values('cpf').distinct().count()
+    jogadores_anterior = ParticipanteRoleta.objects.filter(data_criacao__date__gte=inicio_anterior, data_criacao__date__lt=inicio_atual).values('cpf').distinct().count()
+    var_jogadores = calcular_variacao(jogadores_atual, jogadores_anterior)
+
+    # Giros
+    giros_atual = ParticipanteRoleta.objects.filter(data_criacao__date__gte=inicio_atual).count()
+    giros_anterior = ParticipanteRoleta.objects.filter(data_criacao__date__gte=inicio_anterior, data_criacao__date__lt=inicio_atual).count()
+    var_giros = calcular_variacao(giros_atual, giros_anterior)
+
     # ── Últimos ganhadores (excluindo 'Não foi dessa vez') ───────────────────
     ultimos_ganhadores = (
         ParticipanteRoleta.objects
@@ -53,7 +92,6 @@ def dashboard_home(request):
     data_premios   = [p['total']  for p in premios_distribuicao]
 
     # ── Gráfico de Linha — 3 séries nos últimos 7 dias ───────────────────────
-    hoje        = datetime.now().date()
     dias_semana = [(hoje - timedelta(days=i)) for i in range(6, -1, -1)]
     data_inicio = dias_semana[0]
 
@@ -94,6 +132,14 @@ def dashboard_home(request):
         'funil_validados':       membros_validados,
         'funil_jogadores':       membros_jogadores,
         'total_giros':           total_giros,
+        'var_iniciados_valor':   var_iniciados[0],
+        'var_iniciados_dir':     var_iniciados[1],
+        'var_validados_valor':   var_validados[0],
+        'var_validados_dir':     var_validados[1],
+        'var_jogadores_valor':   var_jogadores[0],
+        'var_jogadores_dir':     var_jogadores[1],
+        'var_giros_valor':       var_giros[0],
+        'var_giros_dir':         var_giros[1],
         'ganhadores':            ultimos_ganhadores,
         'chart_labels_premios':  json.dumps(labels_premios),
         'chart_data_premios':    json.dumps(data_premios),
@@ -157,9 +203,26 @@ def dashboard_premios(request):
                 
         return redirect('dashboard_premios')
         
-    premios = PremioRoleta.objects.all().order_by('nome')
+    premios = PremioRoleta.objects.prefetch_related('cidades_permitidas').order_by('nome')
     cidades = Cidade.objects.filter(ativo=True).order_by('nome')
-    return render(request, 'roleta/dashboard/premios.html', {'premios': premios, 'cidades': cidades})
+
+    # Calcular soma de pesos e chance percentual para o modal
+    soma_pesos = sum(p.probabilidade for p in premios) or 1
+    premios_com_chance = []
+    for p in premios:
+        premios_com_chance.append({
+            'nome': p.nome,
+            'quantidade': p.quantidade,
+            'probabilidade': p.probabilidade,
+            'chance': round((p.probabilidade / soma_pesos) * 100, 1),
+        })
+
+    return render(request, 'roleta/dashboard/premios.html', {
+        'premios': premios,
+        'cidades': cidades,
+        'soma_pesos': soma_pesos,
+        'premios_com_chance': premios_com_chance,
+    })
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
@@ -206,18 +269,22 @@ def dashboard_participantes(request):
     q = request.GET.get('q', '')
     cidade = request.GET.get('cidade', '')
     
-    membros = MembroClube.objects.all().order_by('-data_cadastro')
-    
+    membros = MembroClube.objects.annotate(total_giros=Count('giros')).order_by('-data_cadastro')
+
     if q:
         membros = membros.filter(Q(nome__icontains=q) | Q(cpf__icontains=q))
     if cidade:
         membros = membros.filter(cidade=cidade)
-        
-    # Fetch cities that have prizes defined
+
+    paginator = Paginator(membros, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     todas_cidades = Cidade.objects.filter(ativo=True).values_list('nome', flat=True).order_by('nome')
-    
+
     context = {
-        'participantes': membros, # Keep 'participantes' key to minimize template changes
+        'participantes': page_obj,
+        'page_obj': page_obj,
         'q': q,
         'cidade': cidade,
         'todas_cidades': sorted(list(todas_cidades))
@@ -231,7 +298,7 @@ def dashboard_extrato_membro(request, membro_id):
     Shows the points history (ExtratoPontuacao) for a specific member
     """
     membro = get_object_or_404(MembroClube, id=membro_id)
-    extrato = ExtratoPontuacao.objects.filter(membro=membro).order_by('-data_recebimento')
+    extrato = ExtratoPontuacao.objects.filter(membro=membro).select_related('regra').order_by('-data_recebimento')
     
     return render(request, 'roleta/dashboard/extrato_membro.html', {'membro': membro, 'extrato': extrato})
 
@@ -242,12 +309,16 @@ def dashboard_giros(request):
     Shows historical log of all roulette spins
     """
     q = request.GET.get('q', '')
-    giros = ParticipanteRoleta.objects.all().order_by('-data_criacao')
-    
+    giros = ParticipanteRoleta.objects.select_related('membro').order_by('-data_criacao')
+
     if q:
         giros = giros.filter(Q(nome__icontains=q) | Q(cpf__icontains=q) | Q(premio__icontains=q))
-        
-    return render(request, 'roleta/dashboard/giros.html', {'giros': giros, 'q': q})
+
+    paginator = Paginator(giros, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'roleta/dashboard/giros.html', {'giros': page_obj, 'page_obj': page_obj, 'q': q})
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
@@ -419,3 +490,258 @@ def dashboard_cidades(request):
         
     cidades = Cidade.objects.all().order_by('nome')
     return render(request, 'roleta/dashboard/cidades.html', {'cidades': cidades})
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def dashboard_relatorios(request):
+    """
+    Relatórios analíticos da roleta.
+    """
+    PREMIO_SEM_SORTE = 'Não foi dessa vez'
+    hoje = datetime.now().date()
+
+    # ── Filtro de período ──────────────────────────────────────────────────
+    periodo = request.GET.get('periodo', '30')
+    if periodo == '7':
+        data_inicio = hoje - timedelta(days=7)
+    elif periodo == '15':
+        data_inicio = hoje - timedelta(days=15)
+    elif periodo == '90':
+        data_inicio = hoje - timedelta(days=90)
+    elif periodo == 'total':
+        data_inicio = None
+    else:
+        data_inicio = hoje - timedelta(days=30)
+
+    # Base querysets com filtro de data
+    membros_qs = MembroClube.objects.all()
+    giros_qs = ParticipanteRoleta.objects.all()
+    if data_inicio:
+        membros_qs = membros_qs.filter(data_cadastro__date__gte=data_inicio)
+        giros_qs = giros_qs.filter(data_criacao__date__gte=data_inicio)
+
+    # ── 1. Visão por Cidade ────────────────────────────────────────────────
+    # Consultar total de clientes Hubsoft por cidade (cache na request)
+    hubsoft_clientes_cidade = HubsoftService.consultar_clientes_por_cidade()
+
+    cidades_stats_raw = (
+        membros_qs
+        .exclude(cidade__isnull=True).exclude(cidade='')
+        .values('cidade')
+        .annotate(
+            total_membros=Count('id'),
+            membros_validados=Count('id', filter=Q(validado=True)),
+            total_giros=Count('giros'),
+            total_xp=Sum('xp_total'),
+        )
+        .order_by('-total_membros')
+    )
+
+    # Enriquecer com dados Hubsoft
+    cidades_stats = []
+    for c in cidades_stats_raw:
+        clientes_hubsoft = hubsoft_clientes_cidade.get(c['cidade'], 0)
+        taxa_penetracao = round((c['total_membros'] / clientes_hubsoft * 100), 1) if clientes_hubsoft > 0 else 0
+        cidades_stats.append({
+            **c,
+            'clientes_hubsoft': clientes_hubsoft,
+            'taxa_penetracao': taxa_penetracao,
+        })
+
+    cidades_labels = [c['cidade'] for c in cidades_stats]
+    cidades_membros = [c['total_membros'] for c in cidades_stats]
+    cidades_giros = [c['total_giros'] for c in cidades_stats]
+
+    # ── 2. Prêmios Distribuídos (ranking) ──────────────────────────────────
+    premios_stats = (
+        giros_qs
+        .exclude(premio__iexact=PREMIO_SEM_SORTE)
+        .values('premio')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:15]
+    )
+    premios_labels = [p['premio'] for p in premios_stats]
+    premios_data = [p['total'] for p in premios_stats]
+
+    # ── 3. Funil de Conversão ──────────────────────────────────────────────
+    funil_leads = membros_qs.count()
+    funil_validados = membros_qs.filter(validado=True).count()
+    funil_jogadores = membros_qs.filter(giros__isnull=False).distinct().count()
+    funil_ganhadores = (
+        giros_qs
+        .exclude(premio__iexact=PREMIO_SEM_SORTE)
+        .values('cpf').distinct().count()
+    )
+
+    taxa_validacao = round((funil_validados / funil_leads * 100), 1) if funil_leads > 0 else 0
+    taxa_jogo = round((funil_jogadores / funil_validados * 100), 1) if funil_validados > 0 else 0
+    taxa_premio = round((funil_ganhadores / funil_jogadores * 100), 1) if funil_jogadores > 0 else 0
+
+    # ── 4. Evolução temporal (respeita o filtro de período) ─────────────
+    # Períodos curtos (<=30 dias): agrupamento diário
+    # Períodos longos (>30 dias ou total): agrupamento semanal
+    usar_diario = periodo in ('7', '15', '30')
+
+    if data_inicio:
+        evo_inicio = data_inicio
+    else:
+        evo_inicio = hoje - timedelta(days=90)  # fallback para "total"
+
+    if usar_diario:
+        trunc_fn_cad = TruncDate('data_cadastro')
+        trunc_fn_gir = TruncDate('data_criacao')
+        campo = 'dia'
+    else:
+        trunc_fn_cad = TruncWeek('data_cadastro')
+        trunc_fn_gir = TruncWeek('data_criacao')
+        campo = 'semana'
+
+    evolucao_cadastros = (
+        MembroClube.objects.filter(data_cadastro__date__gte=evo_inicio)
+        .annotate(**{campo: trunc_fn_cad})
+        .values(campo)
+        .annotate(total=Count('id'))
+        .order_by(campo)
+    )
+    evolucao_giros_chart = (
+        ParticipanteRoleta.objects.filter(data_criacao__date__gte=evo_inicio)
+        .annotate(**{campo: trunc_fn_gir})
+        .values(campo)
+        .annotate(total=Count('id'))
+        .order_by(campo)
+    )
+
+    evolucao_cad_dict = {}
+    for r in evolucao_cadastros:
+        d = r[campo]
+        if hasattr(d, 'strftime'):
+            evolucao_cad_dict[d.strftime('%d/%m')] = r['total']
+
+    evolucao_gir_dict = {}
+    for r in evolucao_giros_chart:
+        d = r[campo]
+        if hasattr(d, 'strftime'):
+            evolucao_gir_dict[d.strftime('%d/%m')] = r['total']
+
+    evo_labels = []
+    evo_cad_data = []
+    evo_gir_data = []
+
+    if usar_diario:
+        num_dias = int(periodo)
+        for i in range(num_dias):
+            d = evo_inicio + timedelta(days=i)
+            label = d.strftime('%d/%m')
+            evo_labels.append(label)
+            evo_cad_data.append(evolucao_cad_dict.get(label, 0))
+            evo_gir_data.append(evolucao_gir_dict.get(label, 0))
+        evo_titulo = f'Evolução Diária ({periodo} dias)'
+    else:
+        num_semanas = 12 if periodo == 'total' else (int(periodo) // 7)
+        for i in range(num_semanas):
+            d = evo_inicio + timedelta(weeks=i)
+            d = d - timedelta(days=d.weekday())
+            label = d.strftime('%d/%m')
+            evo_labels.append(label)
+            evo_cad_data.append(evolucao_cad_dict.get(label, 0))
+            evo_gir_data.append(evolucao_gir_dict.get(label, 0))
+        evo_titulo = f'Evolução Semanal'
+
+    # ── 5. Top 10 Jogadores ────────────────────────────────────────────────
+    top_jogadores = (
+        MembroClube.objects
+        .annotate(total_giros=Count('giros'))
+        .filter(total_giros__gt=0)
+        .order_by('-total_giros')[:10]
+    )
+
+    # ── 6. Prêmios por Cidade (tabela cruzada) ────────────────────────────
+    premios_por_cidade = (
+        giros_qs
+        .exclude(premio__iexact=PREMIO_SEM_SORTE)
+        .exclude(cidade__isnull=True).exclude(cidade='')
+        .values('cidade', 'premio')
+        .annotate(total=Count('id'))
+        .order_by('cidade', '-total')
+    )
+
+    # Agrupar por cidade
+    cidade_premios_map = {}
+    for item in premios_por_cidade:
+        cidade = item['cidade']
+        if cidade not in cidade_premios_map:
+            cidade_premios_map[cidade] = []
+        cidade_premios_map[cidade].append({
+            'premio': item['premio'],
+            'total': item['total'],
+        })
+
+    # ── 7. Giros por horário (distribuição) ────────────────────────────────
+    horas_stats = (
+        giros_qs
+        .extra(select={'hora': "EXTRACT(hour FROM data_criacao)"})
+        .values('hora')
+        .annotate(total=Count('id'))
+        .order_by('hora')
+    )
+    horas_dict = {int(h['hora']): h['total'] for h in horas_stats}
+    horas_labels = [f"{h}h" for h in range(24)]
+    horas_data = [horas_dict.get(h, 0) for h in range(24)]
+
+    # ── 8. Ranking de prêmios (sorteados + estoque) ─────────────────────
+    premios_sorteados = (
+        giros_qs
+        .exclude(premio__iexact=PREMIO_SEM_SORTE)
+        .values('premio')
+        .annotate(total_sorteados=Count('id'))
+        .order_by('-total_sorteados')
+    )
+    premios_sorteados_dict = {p['premio']: p['total_sorteados'] for p in premios_sorteados}
+
+    premios_ranking = []
+    for premio in PremioRoleta.objects.all().order_by('nome'):
+        total = premios_sorteados_dict.get(premio.nome, 0)
+        premios_ranking.append({
+            'nome': premio.nome,
+            'total_sorteados': total,
+            'estoque': premio.quantidade,
+        })
+    premios_ranking.sort(key=lambda x: x['total_sorteados'], reverse=True)
+    max_sorteados = premios_ranking[0]['total_sorteados'] if premios_ranking else 1
+
+    context = {
+        'periodo': periodo,
+        # Cidade
+        'cidades_stats': cidades_stats,
+        'chart_cidades_labels': json.dumps(cidades_labels),
+        'chart_cidades_membros': json.dumps(cidades_membros),
+        'chart_cidades_giros': json.dumps(cidades_giros),
+        # Prêmios
+        'chart_premios_labels': json.dumps(premios_labels),
+        'chart_premios_data': json.dumps(premios_data),
+        # Funil
+        'funil_leads': funil_leads,
+        'funil_validados': funil_validados,
+        'funil_jogadores': funil_jogadores,
+        'funil_ganhadores': funil_ganhadores,
+        'taxa_validacao': taxa_validacao,
+        'taxa_jogo': taxa_jogo,
+        'taxa_premio': taxa_premio,
+        # Evolução temporal
+        'evo_titulo': evo_titulo,
+        'chart_evo_labels': json.dumps(evo_labels),
+        'chart_evo_cad': json.dumps(evo_cad_data),
+        'chart_evo_gir': json.dumps(evo_gir_data),
+        # Top jogadores
+        'top_jogadores': top_jogadores,
+        # Prêmios por cidade
+        'cidade_premios_map': dict(cidade_premios_map),
+        # Horários
+        'chart_horas_labels': json.dumps(horas_labels),
+        'chart_horas_data': json.dumps(horas_data),
+        # Ranking prêmios
+        'premios_ranking': premios_ranking,
+        'max_sorteados': max_sorteados,
+    }
+    return render(request, 'roleta/dashboard/relatorios.html', context)
