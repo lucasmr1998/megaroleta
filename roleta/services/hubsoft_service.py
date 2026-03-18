@@ -40,7 +40,7 @@ class HubsoftService:
         import psycopg2
         import datetime
         from django.utils import timezone
-        
+
         try:
             connection = psycopg2.connect(
                 user="mega_leitura",
@@ -49,18 +49,9 @@ class HubsoftService:
                 port="9432",
                 database="hubsoft"
             )
-            cursor = connection.cursor()
-            
-            # Format CPF to ensure compatibility with DB (usually stored with punctuation in Hubsoft, let's just query by numbers if necessary)
-            # Se for buscar direto com pontuação:
-            if len(cpf) == 11:
-                cpf_formatted = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-            elif len(cpf) == 14 and '.' not in cpf:
-                cpf_formatted = f"{cpf[:2]}.{cpf[2:5]}.{cpf[5:8]}/{cpf[8:12]}-{cpf[12:]}"
-            else:
-                cpf_formatted = cpf # se já veio com pontuação da session
-            
-            # Queremos apenas 1 registro agregado sobre esse CPF
+            # Formatação de CPF para busca no banco
+            cpf_clean = cpf.replace('.', '').replace('-', '').replace('/', '')
+
             sql_query = """
                 SELECT DISTINCT ON (cli.codigo_cliente)
                     (CASE WHEN (
@@ -70,7 +61,7 @@ class HubsoftService:
                         AND cc.deleted_at IS NULL
                         AND cc.padrao
                     ) IS NOT NULL THEN 1 ELSE 0 END) AS pontos_recorrencia,
-                    
+
                     (CASE WHEN (
                         SELECT MIN(cob.id_cobranca)
                         FROM cobranca cob
@@ -78,14 +69,30 @@ class HubsoftService:
                         AND cob.data_pagamento <= cob.data_vencimento
                         AND date_trunc('month', cob.data_vencimento) = date_trunc('month', current_date)
                     ) IS NOT NULL THEN 1 ELSE 0 END) AS pontos_adiantado,
-                    
+
                     (CASE WHEN (
                         SELECT MIN(cac.id_cliente_acesso_central)
                         FROM cliente_acesso_central cac
                         WHERE cac.id_cliente = cli.id_cliente
                         AND cac.status = 'success'
                         AND cac.origem = 'app_cliente'
-                    ) IS NOT NULL THEN 1 ELSE 0 END) AS pontos_app
+                    ) IS NOT NULL THEN 1 ELSE 0 END) AS pontos_app,
+
+                    (
+                        SELECT MIN(cob.data_pagamento)
+                        FROM cobranca cob
+                        WHERE cob.id_cliente_servico = cs.id_cliente_servico
+                        AND cob.data_pagamento <= cob.data_vencimento
+                        AND date_trunc('month', cob.data_vencimento) = date_trunc('month', current_date)
+                    ) AS data_pagamento_adiantado,
+
+                    (
+                        SELECT MIN(cob.data_vencimento)
+                        FROM cobranca cob
+                        WHERE cob.id_cliente_servico = cs.id_cliente_servico
+                        AND cob.data_pagamento <= cob.data_vencimento
+                        AND date_trunc('month', cob.data_vencimento) = date_trunc('month', current_date)
+                    ) AS data_vencimento_adiantado
                 FROM cliente_servico cs
                 JOIN cliente cli ON cs.id_cliente = cli.id_cliente
                 JOIN cliente_servico_endereco cse ON cs.id_cliente_servico = cse.id_cliente_servico
@@ -97,19 +104,20 @@ class HubsoftService:
                 AND REPLACE(REPLACE(REPLACE(cli.cpf_cnpj, '.', ''), '-', ''), '/', '') = %s
                 LIMIT 1;
             """
-            
-            # Remove pontuações do CPF para busca segura e comparável
-            cpf_clean = cpf.replace('.', '').replace('-', '').replace('/', '')
-            
-            cursor.execute(sql_query, [cpf_clean])
-            row = cursor.fetchone()
-            connection.close()
-            
+
+            # BUG-14: usar context manager garante fechamento mesmo em excecao
+            with connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(sql_query, [cpf_clean])
+                    row = cursor.fetchone()
+
             if row:
                 return {
                     'hubsoft_recorrencia': row[0] == 1,
                     'hubsoft_adiantado': row[1] == 1,
                     'hubsoft_app': row[2] == 1,
+                    'data_pagamento_adiantado': row[3],
+                    'data_vencimento_adiantado': row[4]
                 }
             return None
         except Exception as e:
@@ -119,7 +127,7 @@ class HubsoftService:
     @staticmethod
     def consultar_cidade_cliente_cpf(cpf: str):
         import psycopg2
-        
+
         try:
             connection = psycopg2.connect(
                 user="mega_leitura",
@@ -128,11 +136,8 @@ class HubsoftService:
                 port="9432",
                 database="hubsoft"
             )
-            cursor = connection.cursor()
-            
-            # Formatação de CPF segura para corresponder aos dados da Hubsoft
             cpf_clean = cpf.replace('.', '').replace('-', '').replace('/', '')
-            
+
             sql_query = """
                 SELECT
                     ci.nome as cidade
@@ -151,11 +156,13 @@ class HubsoftService:
                     AND REPLACE(REPLACE(REPLACE(cli.cpf_cnpj, '.', ''), '-', ''), '/', '') = %s
                 LIMIT 1;
             """
-            
-            cursor.execute(sql_query, [cpf_clean])
-            row = cursor.fetchone()
-            connection.close()
-            
+
+            # BUG-14: context manager garante fechamento mesmo em excecao
+            with connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(sql_query, [cpf_clean])
+                    row = cursor.fetchone()
+
             if row and row[0]:
                 return row[0].strip()
             return None

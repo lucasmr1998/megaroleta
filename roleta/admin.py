@@ -15,7 +15,7 @@ class CidadeAdmin(admin.ModelAdmin):
 
 @admin.register(PremioRoleta)
 class PremioRoletaAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'quantidade')
+    list_display = ('nome', 'quantidade', 'probabilidade', 'mensagem_vitoria')
     filter_horizontal = ('cidades_permitidas',)
     search_fields = ('nome',)
     list_editable = ('quantidade',)
@@ -42,10 +42,10 @@ class MembroClubeAdmin(admin.ModelAdmin):
 
 @admin.register(RegraPontuacao)
 class RegraPontuacaoAdmin(admin.ModelAdmin):
-    list_display = ('nome_exibicao', 'gatilho', 'pontos_saldo', 'pontos_xp', 'ativo')
-    list_filter = ('ativo',)
+    list_display = ('nome_exibicao', 'gatilho', 'pontos_saldo', 'pontos_xp', 'ativo', 'visivel_na_roleta')
+    list_filter = ('ativo', 'visivel_na_roleta')
     search_fields = ('nome_exibicao', 'gatilho')
-    list_editable = ('ativo', 'pontos_saldo', 'pontos_xp')
+    list_editable = ('ativo', 'visivel_na_roleta', 'pontos_saldo', 'pontos_xp')
 
 @admin.register(ExtratoPontuacao)
 class ExtratoPontuacaoAdmin(admin.ModelAdmin):

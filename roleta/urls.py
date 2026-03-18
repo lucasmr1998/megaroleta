@@ -23,4 +23,5 @@ urlpatterns = [
     path('pre-cadastrar/', views.pre_cadastrar, name='pre_cadastrar'),
     path('api/init-dados/', views.roleta_init_dados, name='roleta_init_dados'),
     path('logout/', views.roleta_logout, name='roleta_logout'),
+    path('dashboard/docs/', views.documentacao, name='documentacao'),
 ]

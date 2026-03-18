@@ -21,7 +21,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('', views.home, name='home'),
+    path('', include('roleta.urls')),
     path('admin/', admin.site.urls),
     path('clientes/', include('clientes.urls')),
     path('participacao/', include('participacao.urls')),  # Adicione esta linha para incluir URLs do aplicativo 'clientes'

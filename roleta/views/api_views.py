@@ -1,7 +1,7 @@
 from django.shortcuts import redirect
 from django.http import JsonResponse
-from django.db import transaction
-from django.db.models import Q
+from django.db import transaction, models
+from django.db.models import Q, F
 from roleta.models import PremioRoleta, ParticipanteRoleta, RouletteAsset, RoletaConfig, MembroClube, RegraPontuacao, ExtratoPontuacao, NivelClube, Cidade
 from roleta.services.hubsoft_service import HubsoftService
 from roleta.services.otp_service import OTPService
@@ -19,8 +19,11 @@ def roleta_init_dados(request):
     sorteado_pos = request.session.pop('sorteado_pos', None)
     nome_ganhador = request.session.pop('nome_ganhador', None)
     premio_nome = request.session.pop('premio_nome', None)
+    mensagem_vitoria = request.session.pop('mensagem_vitoria', None)
     erro = request.session.pop('erro_sorteio', None)
     saldo_atual = request.session.pop('saldo_atual', None)
+    limite_giros_config = request.session.pop('limite_giros_config', None)
+    periodo_limite_erro = request.session.pop('periodo_limite', None)
     
     auth_membro_id = request.session.get('auth_membro_id')
     is_authenticated = False
@@ -55,7 +58,7 @@ def roleta_init_dados(request):
                 auth_progresso_nivel = 100
                 
             # Missões e Extrato
-            regras_ativas = RegraPontuacao.objects.filter(ativo=True)
+            regras_ativas = RegraPontuacao.objects.filter(ativo=True, visivel_na_roleta=True)
             for r in regras_ativas:
                 conclusoes = ExtratoPontuacao.objects.filter(membro=membro, regra=r).count()
                 missoes.append({
@@ -94,6 +97,7 @@ def roleta_init_dados(request):
         'sorteado_pos': sorteado_pos,
         'nome_ganhador': nome_ganhador,
         'premio_nome': premio_nome,
+        'mensagem': mensagem_vitoria,
         'saldo_atual': saldo_atual,
         'is_authenticated': is_authenticated,
         'auth_saldo': auth_saldo,
@@ -103,7 +107,12 @@ def roleta_init_dados(request):
         'auth_prox_nivel_xp': auth_prox_nivel_xp,
         'auth_progresso_nivel': auth_progresso_nivel,
         'missoes': missoes,
-        'erro': erro
+        'erro': erro,
+        # Dados de limite de giros
+        'limite_giros_por_membro': config.limite_giros_por_membro,
+        'periodo_limite': config.periodo_limite,
+        'limite_giros_config': limite_giros_config,
+        'periodo_limite_erro': periodo_limite_erro,
     }
     return JsonResponse(data)
 
@@ -113,19 +122,19 @@ def cadastrar_participante(request):
         f.write(f"\n--- CADASTRO INICIADO {datetime.now()} ---\n")
         if request.method == 'POST':
             f.write(f"POST DATA: {request.POST.dict()}\n")
-            
+
             # Check if user is already authenticated via session
             auth_membro_id = request.session.get('auth_membro_id')
             membro = None
             created = False
             config, _ = RoletaConfig.objects.get_or_create(id=1)
-            
+
             if auth_membro_id:
                 try:
                     membro = MembroClube.objects.get(id=auth_membro_id)
                 except MembroClube.DoesNotExist:
                     pass
-            
+
             if membro:
                 # Use data from the established authenticated session
                 nome = membro.nome
@@ -148,7 +157,7 @@ def cadastrar_participante(request):
                 email = request.POST.get('email')
                 telefone = request.POST.get('telefone')
                 cep = request.POST.get('cep')
-                
+
                 # Fetch Real City from Hubsoft PostgreSQL
                 from roleta.services.hubsoft_service import HubsoftService
                 cidade_hubsoft = HubsoftService.consultar_cidade_cliente_cpf(cpf)
@@ -156,7 +165,7 @@ def cadastrar_participante(request):
                     cidade = cidade_hubsoft
                 else:
                     cidade = request.POST.get('cidade') or "Cidade Não Informada"
-                    
+
                 estado = request.POST.get('estado')
                 bairro = request.POST.get('bairro')
                 rua = request.POST.get('rua')
@@ -165,9 +174,9 @@ def cadastrar_participante(request):
                 perfil = request.POST.get('perfil_cliente', 'nao')
                 id_cliente_hubsoft = request.POST.get('id_cliente_hubsoft')
                 if not id_cliente_hubsoft: id_cliente_hubsoft = None
-                
+
                 f.write(f"Parsed FROM POST: CPF={cpf}, Perfil={perfil}\n")
-                
+
                 # SEGURANÇA: Verificar OTP para clientes existentes apenas se não tiver auth_membro_id
                 if perfil == 'sim':
                     if not request.session.get('otp_validado'):
@@ -178,7 +187,7 @@ def cadastrar_participante(request):
 
                 print(f"DEBUG: Cadastrando participante via POST. CPF: {cpf}")
                 endereco_completo = f"{rua} Nº {numero_casa}"
-                
+
                 # Get or create Member
                 membro, created = MembroClube.objects.update_or_create(
                     cpf=cpf,
@@ -197,8 +206,7 @@ def cadastrar_participante(request):
                 if created:
                     from roleta.models import RegraPontuacao
                     from roleta.services.gamification_service import GamificationService
-                    
-                    # Garante que a regra de cadastro existe
+
                     RegraPontuacao.objects.get_or_create(
                         gatilho='cadastro_inicial',
                         defaults={
@@ -209,125 +217,176 @@ def cadastrar_participante(request):
                             'ativo': True
                         }
                     )
-                    
-                    # Salva o membro sem saldo primeiro para o extrato calcular certo
+
                     membro.saldo = 0
                     membro.save()
-                    
+
                     GamificationService.atribuir_pontos(membro, 'cadastro_inicial', 'Primeiro acesso ao clube')
-                    
-                    membro.validado = True # Se for manual e chegou aqui, marcamos como validado
+
+                    membro.validado = True
                     membro.save()
-                
+
                 if request.session.get('otp_validado'):
                     membro.validado = True
                     membro.save()
 
             print(f"DEBUG: Membro processado: {membro.nome}, Saldo: {membro.saldo}")
             request.session['otp_validado'] = False
-        print(f"DEBUG: Membro: {membro.nome}, Saldo: {membro.saldo}, Created: {created}")
-        
-        # Assegura a autenticação na sessão
-        request.session['auth_membro_id'] = membro.id
-        request.session['auth_membro_nome'] = membro.nome
-        request.session['auth_membro_cpf'] = membro.cpf
-        request.session.modified = True
-        
-        acao = request.POST.get('acao')
-        if acao != 'girar':
-            # Se não for o botão explícito de girar, apenas efetuou login/cadastro.
+            print(f"DEBUG: Membro: {membro.nome}, Saldo: {membro.saldo}, Created: {created}")
+
+            # Assegura a autenticação na sessão
+            request.session['auth_membro_id'] = membro.id
+            request.session['auth_membro_nome'] = membro.nome
+            request.session['auth_membro_cpf'] = membro.cpf
+            request.session.modified = True
+
+            acao = request.POST.get('acao')
+            if acao != 'girar':
+                return redirect('roleta_index')
+
+            # ── Verificar saldo (com lock para evitar race condition) ──────────
+            membro = MembroClube.objects.select_for_update().get(id=membro.id)
+            has_sufficient_points = membro.saldo >= config.custo_giro
+
+            if not has_sufficient_points:
+                error_msg = 'saldo_insuficiente'
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False, 
+                        'error': error_msg,
+                        'custo': config.custo_giro,
+                        'saldo': membro.saldo
+                    })
+                request.session['erro_sorteio'] = error_msg
+                return redirect('roleta_index')
+
+            # Se tem saldo, mas já ganhou algo (e a regra for apenas uma participação, 
+            # mas como temos sistema de pontos, esta trava pode ser opcional ou específica)
+            # No momento, mantemos como trava de segurança se necessário.
+
+            # ── Verificação de limite de giros ────────────────────────────────
+            if config.limite_giros_por_membro > 0:
+                from django.utils import timezone as tz
+                from datetime import timedelta
+                giros_q = ParticipanteRoleta.objects.filter(membro=membro)
+                periodo = config.periodo_limite
+                if periodo == 'diario':
+                    giros_q = giros_q.filter(data_criacao__date=tz.now().date())
+                elif periodo == 'semanal':
+                    giros_q = giros_q.filter(data_criacao__gte=tz.now() - timedelta(days=7))
+                elif periodo == 'mensal':
+                    giros_q = giros_q.filter(
+                        data_criacao__year=tz.now().year,
+                        data_criacao__month=tz.now().month
+                    )
+                qtd_giros = giros_q.count()
+                if qtd_giros >= config.limite_giros_por_membro:
+                    f.write(f"Limite de giros atingido: {qtd_giros}/{config.limite_giros_por_membro} ({periodo})\n")
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False, 
+                            'error': 'limite_giros',
+                            'limite': config.limite_giros_por_membro,
+                            'periodo': periodo
+                        })
+                    request.session['erro_sorteio'] = 'limite_giros'
+                    request.session['limite_giros_config'] = config.limite_giros_por_membro
+                    request.session['periodo_limite'] = periodo
+                    return redirect('roleta_index')
+            # ─────────────────────────────────────────────────────────────────
+
+            # Determine locality for prizes
+            localidade = membro.cidade
+            if not localidade:
+                localidade = "Cidade Não Informada"
+
+            f.write(f"Localidade final: {localidade}\n")
+
+            # Find available prizes for the locality
+            # Estoque protegido via update atômico com F() — select_for_update não pode ser usado com distinct()
+            premios_disponiveis = list(PremioRoleta.objects.filter(
+                Q(cidades_permitidas__nome__iexact=localidade) | Q(cidades_permitidas__isnull=True),
+                quantidade__gt=0
+            ).distinct())
+
+            if not premios_disponiveis:
+                f.write(f"ERRO CRITICO: Nenhum prêmio disponível em localidade={localidade}\n")
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': 'acabou_premio'})
+                request.session['erro_sorteio'] = 'acabou_premio'
+                return redirect('roleta_index')
+
+            new_saldo, premio_selecionado, roleta_pos = SorteioService.executar_giro_roleta(
+                membro=membro,
+                premios_disponiveis=premios_disponiveis,
+                custo_giro=config.custo_giro
+            )
+
+            membro.saldo = new_saldo
+            membro.xp_total += config.xp_por_giro
+            membro.save()
+
+            # Update atômico do estoque via F() — protege contra race condition
+            rows_updated = PremioRoleta.objects.filter(
+                id=premio_selecionado.id,
+                quantidade__gt=0  # Só decrementa se ainda há estoque (guarda dupla)
+            ).update(quantidade=F('quantidade') - 1)
+
+            if rows_updated == 0:
+                # Outro processo zerou o estoque entre o SELECT e o UPDATE
+                # Reverter saldo do membro e rejeitar o giro
+                f.write(f"RACE CONDITION: estoque de '{premio_selecionado.nome}' esgotado entre SELECT e UPDATE. Revertendo saldo.\n")
+                membro.saldo = membro.saldo + custo_giro  # Reverte localmente antes do save
+                # O @transaction.atomic garante rollback completo ao lançar a exceção
+                from django.db import IntegrityError
+                raise IntegrityError("Estoque esgotado — tente novamente.")
+
+            perfil_cliente = request.POST.get('perfil_cliente', 'nao')
+            id_cliente_hubsoft_final = request.POST.get('id_cliente_hubsoft') or None
+
+            # Create spin record
+            ParticipanteRoleta.objects.create(
+                membro=membro,
+                nome=nome,
+                cpf=cpf,
+                email=email,
+                telefone=telefone,
+                cep=cep,
+                endereco=endereco_completo,
+                bairro=bairro,
+                cidade=cidade,
+                estado=estado,
+                premio=premio_selecionado.nome,
+                canal_origem=canal,
+                perfil_cliente=perfil_cliente,
+                id_cliente_hubsoft=id_cliente_hubsoft_final,
+                saldo=new_saldo,
+                status='reservado'
+            )
+
+            f.write(f"Prêmio Selecionado: {premio_selecionado.nome} (Pos: {roleta_pos}, New Saldo: {new_saldo})\n")
+
+            # Se for requisição AJAX (authSpinForm), retornar JSON SEM salvar na sessão
+            # (a animação será disparada pelo JSON — salvar na sessão causaria double-spin)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' and acao == 'girar':
+                return JsonResponse({
+                    'success': True,
+                    'sorteado_pos': roleta_pos,
+                    'premio_nome': premio_selecionado.nome,
+                    'mensagem': premio_selecionado.mensagem_vitoria,
+                    'saldo_atual': new_saldo
+                })
+
+            # Fluxo não-AJAX: salvar na sessão e redirecionar para roleta_index exibir resultado
+            request.session['sorteado_pos'] = roleta_pos
+            request.session['nome_ganhador'] = nome
+            request.session['premio_nome'] = premio_selecionado.nome
+            request.session['mensagem_vitoria'] = premio_selecionado.mensagem_vitoria
+            request.session['saldo_atual'] = new_saldo
+            request.session.modified = True
+
             return redirect('roleta_index')
-            
-        # Check if already registered - only block if they DON'T have points for a new spin
-        has_sufficient_points = membro.saldo >= config.custo_giro
 
-        if not has_sufficient_points and ParticipanteRoleta.objects.filter(cpf=cpf).exists():
-            request.session['erro_sorteio'] = 'jah_cadastrado'
-            request.session['nome_ganhador'] = membro.nome
-            request.session['premio_nome'] = ParticipanteRoleta.objects.filter(cpf=cpf).last().premio
-            return redirect('roleta_index')
-
-        if not has_sufficient_points:
-            request.session['erro_sorteio'] = f"Saldo insuficiente! Você precisa de {config.custo_giro} pontos."
-            return redirect('roleta_index')
-            
-        # Saldo será debitado dentro do SorteioService após validar prêmios disponíveis
-            
-        # Determine locality for prizes
-        localidade = membro.cidade
-
-        if not localidade:
-            localidade = "Cidade Não Informada"
-            
-        f.write(f"Localidade final: {localidade}\n")
-        # Find available prizes for the locality
-        premios_disponiveis = list(PremioRoleta.objects.filter(
-            Q(cidades_permitidas__nome__iexact=localidade) | Q(cidades_permitidas__isnull=True),
-            quantidade__gt=0
-        ).distinct())
-
-        if not premios_disponiveis:
-            f.write(f"ERRO CRITICO: Nenhum prêmio disponível em localidade={localidade}\n")
-            request.session['erro_sorteio'] = 'acabou_premio'
-            return redirect('roleta_index')
-            
-        new_saldo, premio_selecionado, roleta_pos = SorteioService.executar_giro_roleta(
-            membro=membro,
-            premios_disponiveis=premios_disponiveis,
-            custo_giro=config.custo_giro
-        )
-        
-        membro.saldo = new_saldo
-        membro.xp_total += config.xp_por_giro
-        membro.save()
-        premio_selecionado.save()
-        
-        perfil_cliente = request.POST.get('perfil_cliente', 'nao')
-        id_cliente_hubsoft = request.POST.get('id_cliente_hubsoft')
-        if not id_cliente_hubsoft: id_cliente_hubsoft = None
-        
-        # Prepare for create
-
-        # Create spin record
-        ParticipanteRoleta.objects.create(
-            membro=membro,
-            nome=nome,
-            cpf=cpf,
-            email=email,
-            telefone=telefone,
-            cep=cep,
-            endereco=endereco_completo,
-            bairro=bairro,
-            cidade=cidade,
-            estado=estado,
-            premio=premio_selecionado.nome,
-            canal_origem=canal,
-            perfil_cliente=perfil_cliente,
-            id_cliente_hubsoft=id_cliente_hubsoft,
-            saldo=new_saldo,
-            status='reservado'
-        )
-        
-        # Atualização de estoque já realizada dentro do SorteioService
-        
-        # Store in session for the roulette animation
-        request.session['sorteado_pos'] = roleta_pos
-        request.session['nome_ganhador'] = nome
-        request.session['premio_nome'] = premio_selecionado.nome
-        request.session['saldo_atual'] = new_saldo
-        request.session.modified = True
-        
-        # Se for requisição ajax do botão authSpinForm, retornar json
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest' and acao == 'girar':
-            return JsonResponse({
-                'success': True,
-                'sorteado_pos': roleta_pos,
-                'premio_nome': premio_selecionado.nome,
-                'saldo_atual': new_saldo
-            })
-            
-        return redirect('roleta_index')
-        
     return redirect('roleta_index')
 
 @transaction.atomic
@@ -343,8 +402,21 @@ def verificar_cliente(request):
         cliente_data = HubsoftService.consultar_cliente(cpf)
         if cliente_data:
             print(f"DEBUG: Cliente Hubsoft encontrado: {cliente_data.get('nome_razaosocial')}")
-            
-            # PERSISTÊNCIA IMEDIATA (Pedido pelo usuário)
+
+            # Cidade: tenta primeiro pelo webhook, se vier vazia busca direto no PostgreSQL Hubsoft
+            # A cidade do PostgreSQL é a fonte mais confiável (cruza endereço de instalação)
+            cidade_webhook = cliente_data.get('nome_cidade') or cliente_data.get('cidade') or ''
+            if not cidade_webhook:
+                cidade_postgres = HubsoftService.consultar_cidade_cliente_cpf(cpf)
+                cidade_final = cidade_postgres or ''
+                print(f"DEBUG: Cidade não veio no webhook, buscada do PostgreSQL: '{cidade_final}'")
+            else:
+                # Mesmo que o webhook retorne, confirma com o PostgreSQL (instalação é a verdade)
+                cidade_postgres = HubsoftService.consultar_cidade_cliente_cpf(cpf)
+                cidade_final = cidade_postgres or cidade_webhook
+                print(f"DEBUG: Cidade webhook='{cidade_webhook}', PostgreSQL='{cidade_postgres}', final='{cidade_final}'")
+
+            # PERSISTÊNCIA IMEDIATA
             # Se não existe, cria. Se existe, atualiza com dados do Hubsoft
             membro, created = MembroClube.objects.update_or_create(
                 cpf=cpf,
@@ -355,16 +427,14 @@ def verificar_cliente(request):
                     'cep': cliente_data.get('cep'),
                     'endereco': cliente_data.get('endereco'),
                     'bairro': cliente_data.get('bairro'),
-                    'cidade': cliente_data.get('nome_cidade') or cliente_data.get('cidade') or '',
+                    'cidade': cidade_final,
                     'id_cliente_hubsoft': cliente_data.get('id_cliente')
                 }
             )
-            # Garante que começa como validado=False se for novo ou se já era pendente
             if created:
                 from roleta.models import RegraPontuacao
                 from roleta.services.gamification_service import GamificationService
-                
-                # Garante que a regra de cadastro existe
+
                 RegraPontuacao.objects.get_or_create(
                     gatilho='cadastro_inicial',
                     defaults={
@@ -375,16 +445,16 @@ def verificar_cliente(request):
                         'ativo': True
                     }
                 )
-                
+
                 membro.saldo = 0
                 membro.validado = False
                 membro.save()
-                
+
                 membro.refresh_from_db()
                 saldo_final = membro.saldo
             else:
                 saldo_final = membro.saldo
-            
+
             return JsonResponse({
                 'is_client': True,
                 'nome_razaosocial': cliente_data.get('nome_razaosocial'),
@@ -397,7 +467,7 @@ def verificar_cliente(request):
                 'endereco': cliente_data.get('endereco'),
                 'numero': cliente_data.get('numero'),
                 'bairro': cliente_data.get('bairro'),
-                'cidade': cliente_data.get('nome_cidade') or cliente_data.get('cidade') or ''
+                'cidade': cidade_final
             })
         
         return JsonResponse({'is_client': False})
@@ -427,10 +497,11 @@ def solicitar_otp(request):
             
             # Gerar código via OTPService
             otp_code = OTPService.gerar_codigo()
-            
-            # Save to session
+
+            # Save to session (com timestamp para expiração)
             request.session['otp_code'] = otp_code
             request.session['otp_cpf'] = cpf
+            request.session['otp_gerado_em'] = current_time  # BUG-05: expiração de 10 min
             
             # Send via n8n webhook module
             sucesso, msg = OTPService.enviar_otp_whatsapp(cpf, telefone, otp_code)
@@ -457,6 +528,13 @@ def validar_otp(request):
             f.write(f"User Code: '{codigo_usuario}' (len:{len(codigo_usuario)})\n")
             f.write(f"Session Code: '{codigo_sessao}' (len:{len(codigo_sessao)})\n")
             
+            # BUG-05: Verificar expiração do OTP (10 minutos)
+            otp_gerado_em = request.session.get('otp_gerado_em')
+            otp_expirado = otp_gerado_em and (time.time() - otp_gerado_em) > 600
+            if otp_expirado:
+                f.write(f"RES: SUCCESS=FALSE (OTP expirado após {int(time.time() - otp_gerado_em)}s)\n")
+                return JsonResponse({'success': False, 'error': 'Código expirado. Solicite um novo código.'})
+
             if codigo_usuario and codigo_usuario == codigo_sessao:
                 request.session['otp_validado'] = True
                 if cpf:
@@ -531,7 +609,18 @@ def validar_otp(request):
                                         data_recebimento__month=timezone.now().month
                                     ).exists()
                                     if not ja_ganhou_mes:
-                                        GamificationService.atribuir_pontos(membro, 'hubsoft_adiantado', f"Mês {timezone.now().month}/{timezone.now().year}")
+                                        desc = f"Mês {timezone.now().month}/{timezone.now().year}"
+                                        
+                                        # Incrementar datas se disponíveis
+                                        d_pgto = status_pontos.get('data_pagamento_adiantado')
+                                        d_venc = status_pontos.get('data_vencimento_adiantado')
+                                        if d_pgto and d_venc:
+                                            try:
+                                                desc += f" (Venc: {d_venc.strftime('%d/%m')}, Pago: {d_pgto.strftime('%d/%m')})"
+                                            except:
+                                                desc += f" (Pago Adiantado)"
+                                                
+                                        GamificationService.atribuir_pontos(membro, 'hubsoft_adiantado', desc)
 
                             f.write("Sincronização Hubsoft finalizada com sucesso.\n")
                         except Exception as sync_e:
@@ -562,7 +651,16 @@ def pre_cadastrar(request):
                     'email': data.get('email'),
                 }
                 # Adiciona endereço se presente (vindo do Step 3 ou Hubsoft)
-                if data.get('cidade'): defaults['cidade'] = data.get('cidade')
+                # BUG-11: garantir cidade consultando PostgreSQL Hubsoft se não veio no POST
+                cidade_post = data.get('cidade')
+                if cidade_post:
+                    defaults['cidade'] = cidade_post
+                else:
+                    from roleta.services.hubsoft_service import HubsoftService
+                    cidade_pg = HubsoftService.consultar_cidade_cliente_cpf(cpf)
+                    if cidade_pg:
+                        defaults['cidade'] = cidade_pg
+                        f.write(f"Cidade obtida via PostgreSQL Hubsoft: {cidade_pg}\n")
                 if data.get('cep'): defaults['cep'] = data.get('cep')
                 # Rua + Numero
                 rua = data.get('rua')

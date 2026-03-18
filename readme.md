@@ -1,98 +1,189 @@
-🎰 Mega Sorteio Roleta
-Uma Plataforma Interativa de Engajamento e Premiação
+# 🎰 MegaRoleta
 
-Visão Geral • Arquitetura • Recursos • Integrações • Banco de Dados • Segurança • Instalação
+> Plataforma de engajamento e premiação para provedores de internet — roleta digital com gamificação, integração Hubsoft e validação via WhatsApp.
 
-📖 Visão Geral
-O Mega Sorteio Roleta é um sistema completo em Python/Django desenhado para campanhas de marketing conversacional e fidelização de clientes. O projeto vai muito além de uma simples roleta visual: ele atua como um sistema robusto de captação de leads (com enriquecimento de dados), verificação anti-fraude em tempo real e análise de métricas para gestores.
+---
 
-Neste projeto, o cliente interage com uma roleta de prêmios animada. Antes de girar, ele fornece seu número (ou CPF), resultando em um fluxo dinâmico dependendo se ele é um "Novo Cliente" ou "Membro do Clube".
+## 📖 Visão Geral
 
-🏗️ Arquitetura e Tecnologias
-A aplicação segue o padrão de arquitetura monolítica moderna, com backend renderizando os templates de base, mas utilizando uma abordagem de Frontend Desacoplado (Decoupled) na engine principal da roleta, onde o Javascript nativo se comunica com endpoints JSON do Django.
+O **MegaRoleta** é um sistema completo em Django para campanhas de fidelização de clientes. O cliente informa seu CPF, valida sua identidade via código OTP no WhatsApp e gira uma roleta de prêmios. O resultado é decidido pelo backend (algoritmo ponderado por probabilidade e estoque) — o frontend apenas anima onde a roleta para.
 
-Stack Tecnológica
-Linguagem Principal: Python 3.10+
-Framework Web: Django (com foco no ORM, Sessions e Admin Interno)
-Frontend:
-HTML5 e CSS3 (Design Responsivo e Neomórfico)
-JavaScript (Vanilla API para chamadas fetch, gerenciamento de fluxo no index_frontend.html)
-Animação da Roleta via Canvas / Transitions CSS
-Bibliotecas: jQuery (para InputMasks de CPF/CEP/Mobile), SweetAlert2 (Alertas Estilizados), Chart.js (Painel Administrativo)
-Banco de Dados: SQLite3 (Ambiente Dev) / PostgreSQL (Produção)
-Persistência de Mídia: Django Media Storage (para manipulação de avatares, imagens da roleta e ícones)
-✨ Recursos Principais
-Fluxo do Cliente (Front-End)
-Identificação Dinâmica: O usuário digita seu telefone.
-Separação de Leads: A API checa se é um usuário conhecido ou não. Se for novo, pede CPF, CEP e preenche automaticamente o resto dos dados se possuir correspondência na base via Hubsoft.
-Validação de Identidade: Todos os novos cadastros/jogares devem provar que são donos do número através de um webhook enviado por n8n (One-Time Password - OTP).
-Roleta Inteligente: O giro visual (animação angular fluida e responsiva com foco UI/UX) não decide nada aleatoriamente no front. Assim que o jogador clica em iniciar, o backend roda o algoritmo ponderado, seleciona o prêmio, debita da contagem global, sincroniza e informa a interface onde a roda deve parar de girar.
-🎮 Gamificação e Retenção (Clube MegaLink)
-Sistema de Níveis (XP): Jogadores ganham pontos de Experiência (XP) ao realizar ações, subindo de Patentes (ex: Bronze, Prata, Ouro), construindo engajamento de longo prazo.
-Missões Interativas (Quests): Um painel inline estilizado fornece missões para o cliente (ex: "Pagar fatura adiantada", "Baixar APP"). Ao cumpri-las, ele recebe recompensas automáticas de mais Giros na roleta e XP.
-Dashboard do Jogador Aprimorado: O perfil do usuário foi desenhado com foco num UI Premium, split-screen (50/50), destacando a roleta com um botão flutuante e exibindo claramente na lateral a progressão do seu nível e cartões de missões disponíveis.
-📊 Dashboard Administrativo (Visão Gerencial)
-A interface de administração estendida do Django foi customizada para ter a página /roleta/dashboard/.
+---
 
-Funil de Venda/Conversão: Conta perfeitamente a queda entre "Iniciados", "Validados (WhatsApp)" e "Jogadores Ativos".
-Kpis Diários (Line Chart): Gráficos criados com Chart.js mostrando como os jogadores estão gastando as rodadas na linha do tempo dos últimos 7 dias.
-Share de Saída (Doughnut Chart): Divisão exata dos prêmios mais sorteados, tudo integrado ao ORM em tempo real views.py.
-Feed ao vivo: Tabela dos últimos ganhadores em tempo real.
-🔗 Integrações Externas
-Para elevar o projeto, o backend orquestra chamadas cruciais durante os milissegundos do cadastro:
+## 🏗️ Stack Tecnológica
 
-n8n (Motor de Automação / WhatsApp):
-Na linha views.solicitar_otp(), o Django dispara um requests.post contra um Webhook do N8N enviando { numero, validacao }. Isso aciona a mensagem no celular do cliente para provar sua capacidade de contato (evitando disparos curtos via script de bad actors).
-Hubsoft (ERP do Provedor de Internet):
-Na linha views.verificar_cliente(), caso seja um novo número, a aplicação confere o client_id na API interna da empresa. Se achar, ela herda as informações verdadeiras e simplifica o frontend do usuário, cortando em até 80% o tempo para girar.
-ViaCEP API:
-Resolução básica de CEP em Ajax nativo instalada no input de endereço para converter o código postal da form na Rua e Bairro correspondente.
-�️ Modelagem de Dados
-O projeto conta com uma topologia de Models coesa no arquivo models.py enriquecida recentemente para um ecossistema gamificado completo:
+| Camada | Tecnologia |
+|---|---|
+| Backend | Python 3.10+ / Django |
+| Frontend | HTML5, CSS3, JavaScript Vanilla |
+| Animações | Canvas + CSS Transitions |
+| Libs JS | jQuery (máscaras), SweetAlert2 (alertas), Chart.js (dashboard) |
+| Banco (dev) | SQLite3 |
+| Banco (prod) | PostgreSQL (Hubsoft: `177.10.118.77:9432`) |
+| Servidor (prod) | Gunicorn + Nginx + Certbot (HTTPS) |
+| Automações | n8n (webhooks WhatsApp/OTP) |
 
-ParticipanteRoleta: A Entidade pai, guardando todas as "rodadas" que a roleta gera, seus horários, e se foi ganho, perdido e qual foi o nome do participante ou se é um membro autenticado.
-MembroClube: O CRM logado. Possui as regras de engajamento (CPF, Status, ClientID externo) e as Carteiras Virtuais (Saldo de Pontos/Giros, Nível Atual de Patente, e medidor de Experiência - XP).
-PremioRoleta: O inventário do jogo. Permite cadastrar nome, tipo de prêmio, peso da probabilidade do sorteio e rigorosos Limites de estoque mensal/diário geolocalizados por cidade.
-Missoes & Recompensas: Entidades que vinculam o cliente à tarefas externas, provendo bônus automatizado na carteira virtual e XP (Extratos detalhados de histórico de gamificação).
-🔒 Proteções e Segurança (Rate Limits)
-Sessions via OTP: Em vez de senhas complexas, os Sessões (request.session) do framework injetam um Cookie seguro no navegador apenas do momento que o código chega do n8n limitando qualquer ataque direto.
-Cool-Dows (Rate Limiting de SMS): Usuários não podem floodar custos de API. A requisição verifica em sessão e trava novos envios de código por até 60 segundos. Tentativas de bypass recebem códigos HTTP 429 - Too Many Requests.
-💻 Como Executar Localmente
-1. Clonar e Iniciar o Ambiente
-# Clone o repositório
+---
+
+## ✨ Recursos Principais
+
+### Fluxo do Cliente
+- **Identificação dinâmica** — usuário informa o CPF; o sistema consulta o Hubsoft para preencher dados automaticamente
+- **Validação OTP** — código enviado via WhatsApp (n8n) para confirmar identidade
+- **Roleta inteligente** — backend sorteia o prêmio por peso/probabilidade antes de animar o frontend
+
+### Gamificação (Clube MegaLink)
+- **Saldo de Giros** — moeda interna para girar a roleta
+- **XP e Níveis** — Bronze, Prata, Ouro etc., ganhos por ações do cliente
+- **Missões** — tarefas que concedem giros extras (pagar adiantado, usar app, ativar recorrência)
+
+### Integração Hubsoft
+Consultado em dois momentos:
+1. **Webhook n8n** → dados cadastrais do cliente (nome, email, endereço)
+2. **Banco PostgreSQL direto** → pontuações extras baseadas em comportamento:
+   - `hubsoft_recorrencia` — pagamento em cartão recorrente (+3 giros, +30 XP)
+   - `hubsoft_adiantado` — fatura paga antes do vencimento, mensal (+5 giros, +50 XP)
+   - `hubsoft_app` — cliente usa o App Central (+2 giros, +20 XP)
+
+### Dashboard Administrativo (`/roleta/dashboard/`)
+- Funil de conversão (Iniciados → Validados → Jogadores)
+- Gráficos de giros diários (últimos 7 dias)
+- Distribuição de prêmios
+- Gestão de prêmios, cidades, assets visuais, gamificação e configurações
+- **🔬 Diagnóstico Hubsoft** — testa consulta de cidade e pontuações por CPF em tempo real
+
+---
+
+## 🗄️ Modelos de Dados
+
+| Model | Responsabilidade |
+|---|---|
+| `MembroClube` | CRM do cliente autenticado (saldo, XP, validação) |
+| `ParticipanteRoleta` | Histórico de cada giro realizado |
+| `PremioRoleta` | Catálogo de prêmios com estoque e probabilidade por cidade |
+| `RegraPontuacao` | Regras de gamificação (gatilho, pontos, limite) |
+| `ExtratoPontuacao` | Histórico de pontos ganhos por membro |
+| `NivelClube` | Definição de níveis e XP necessário |
+| `Cidade` | Segmentação geográfica dos prêmios |
+| `RoletaConfig` | Configurações gerais (custo do giro, XP por giro, nome do clube) |
+| `RouletteAsset` | Imagens da roleta (frames, fundo, logo, ponteiro) |
+
+---
+
+## 🔒 Segurança
+
+- **OTP via WhatsApp** — sessão autenticada apenas após validação do código
+- **Rate limiting** — bloqueio de 60s entre solicitações de OTP (`HTTP 429`)
+- **Sessão segura** — `request.session` com cookie HttpOnly; nenhum dado sensível exposto no frontend
+- **Verificação de saldo** — backend valida saldo antes de executar qualquer giro
+
+---
+
+## 💻 Executar Localmente
+
+```bash
+# 1. Clonar e entrar na pasta
 git clone https://github.com/consulteplus/megaroleta.git
-
-# Acesse a pasta
 cd megaroleta
 
-# Crie o ambiente virtual em Python
-python -m venv .venv
-Ative o ambiente:
+# 2. Criar e ativar o ambiente virtual
+python3 -m venv .venv
+source .venv/bin/activate          # Linux/Mac
+# .venv\Scripts\activate           # Windows
 
-Windows (cmd / powershell): .\.venv\Scripts\activate
-Mac / Linux: source .venv/bin/activate
-2. Instalação e Banco
-# Instale os pacotes básicos
-pip install django requests pillow python-dotenv
-Suba o painel subjacente do framework recriando o mapa local:
+# 3. Instalar dependências
+pip install -r requirements.txt
 
-python manage.py makemigrations
-python manage.py migrate
+# 4. Banco de dados
+.venv/bin/python manage.py migrate
 
-# Configure um primeiro gerente do Django
-python manage.py createsuperuser
-3. Executar Servidor
-python manage.py runserver
-Vá para o navegador. A landing principal da engrenagem estará na URL http://127.0.0.1:8000/roleta. Para criar prêmios falsos no sistema de teste, acesse: http://127.0.0.1:8000/admin.
+# 5. Criar superusuário
+.venv/bin/python manage.py createsuperuser
 
-🚀 Desdobramentos e Deploy em Produção (Roadmap)
-Para escalar usando servidores reais:
+# 6. Rodar servidor de desenvolvimento
+.venv/bin/python manage.py runserver
+```
 
-Migre os arquivos estáticos configurando o STATIC_ROOT para um bucket servido via Nginx.
-Atualize do banco dev com o adaptador .env no settings.py para injetar o PostgreSQL.
-Troque o servidor padrão com gunicorn megasorteio.wsgi.
-Próximas Atividades Mapeadas (Future Proofing)
-Refatoração Módulo (Design Pattern): Desdobrar o engessado arquivo de View Models em "Services" (HubsoftService, WebhookService).
-Gamificação Avançada: Implementação de pontuações complexas a cada visita ou contrato renovado do ERP para turbinar a experiência da roleta diária (Mega Tokens).
-Membro-Referral (Comissionamento Digital): O módulo MembroClube possuirá um código URL de convite para amigos que fornecerá giros grátis mútuos se os indicados conseguirem validar o número de telefone no Banco de Dados.
-Desenvolvido de ponta a ponta com carinho para engajar leads reais e alavancar métricas do hub comercial. 🎰
+Acesse:
+- Roleta: http://127.0.0.1:8000/roleta/
+- Admin Django: http://127.0.0.1:8000/admin/
+- Dashboard: http://127.0.0.1:8000/roleta/dashboard/
+
+---
+
+## 🚀 Deploy em Produção (Gunicorn + Nginx)
+
+O projeto usa um socket Unix para comunicação Gunicorn ↔ Nginx.
+
+### Serviço Gunicorn (`/etc/systemd/system/megaroleta.service`)
+
+```ini
+[Unit]
+Description=Gunicorn MegaRoleta
+After=network.target
+
+[Service]
+User=lucas
+Group=www-data
+WorkingDirectory=/home/lucas/megaroleta
+ExecStart=/home/lucas/megaroleta/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/home/lucas/megaroleta/megaroleta.sock \
+    sorteio.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Comandos do Serviço
+
+```bash
+# Iniciar
+sudo systemctl start megaroleta
+
+# Reiniciar (após mudanças no código Python ou templates)
+sudo systemctl restart megaroleta
+
+# Verificar status e logs
+sudo systemctl status megaroleta
+sudo journalctl -u megaroleta -n 50
+
+# Habilitar para iniciar com o sistema
+sudo systemctl enable megaroleta
+```
+
+### Coletar arquivos estáticos (após mudanças em CSS/JS)
+
+```bash
+cd /home/lucas/megaroleta
+.venv/bin/python manage.py collectstatic --noinput
+```
+
+### Nginx
+
+O Nginx atua como proxy reverso, servindo os arquivos estáticos e redirecionando o restante para o socket do Gunicorn. Após editar a config do Nginx:
+
+```bash
+sudo nginx -t                        # Verificar sintaxe
+sudo systemctl reload nginx          # Aplicar mudanças
+```
+
+---
+
+## 🗺️ URLs Principais
+
+| URL | Descrição |
+|---|---|
+| `/roleta/` | Página da roleta (frontend do cliente) |
+| `/roleta/dashboard/` | Painel administrativo |
+| `/roleta/dashboard/diagnostico-hubsoft/` | 🔬 Diagnóstico de consulta Hubsoft por CPF |
+| `/roleta/dashboard/gamificacao/` | Gerenciar regras de pontuação e níveis |
+| `/roleta/dashboard/participantes/` | Lista de membros do clube |
+| `/roleta/api/init-dados/` | Endpoint JSON com dados iniciais da roleta |
+| `/roleta/verificar-cliente/` | Consulta CPF no Hubsoft (AJAX) |
+| `/roleta/solicitar-otp/` | Envia OTP via WhatsApp |
+| `/roleta/validar-otp/` | Valida o código OTP e sincroniza pontuações |
+
+---
+
+*Desenvolvido para engajar clientes e alavancar métricas do hub comercial. 🎰*

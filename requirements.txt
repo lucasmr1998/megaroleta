@@ -7,3 +7,4 @@ psycopg2-binary==2.9.9
 apscheduler==3.10.4
 sqlparse==0.5.1
 tzdata==2024.1
+markdown>=3.5

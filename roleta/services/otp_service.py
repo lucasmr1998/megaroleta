@@ -28,3 +28,4 @@ class OTPService:
             return False, f"Falha na API: {response.text}"
         except Exception as e:
             return False, str(e)
+

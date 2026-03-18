@@ -25,58 +25,82 @@ def admin_login(request):
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def dashboard_home(request):
-    total_participantes = ParticipanteRoleta.objects.count()
-    premios_restantes = PremioRoleta.objects.aggregate(total=Count('id', filter=Q(quantidade__gt=0)))['total']
-    ultimos_ganhadores = ParticipanteRoleta.objects.order_by('-data_criacao')[:5]
-    
-    # 1. Funil de Conversao
+    PREMIO_SEM_SORTE = 'Não foi dessa vez'
+
+    # ── KPI Cards ────────────────────────────────────────────────────────────
     membros_iniciados = MembroClube.objects.count()
     membros_validados = MembroClube.objects.filter(validado=True).count()
     membros_jogadores = MembroClube.objects.filter(giros__isnull=False).distinct().count()
-    
-    # Validações caso 0 pra não dar divisão por zero
-    tx_validacao = int((membros_validados / membros_iniciados * 100)) if membros_iniciados > 0 else 0
-    tx_agressao = int((membros_jogadores / membros_iniciados * 100)) if membros_iniciados > 0 else 0
+    total_giros       = ParticipanteRoleta.objects.count()
 
-    # 2. Dados Gráfico Pizzas (Prêmios)
-    premios_distribuicao = ParticipanteRoleta.objects.filter(status='ganhou').values('premio').annotate(total=Count('id')).order_by('-total')
+    # ── Últimos ganhadores (excluindo 'Não foi dessa vez') ───────────────────
+    ultimos_ganhadores = (
+        ParticipanteRoleta.objects
+        .exclude(premio__iexact=PREMIO_SEM_SORTE)
+        .order_by('-data_criacao')[:10]
+    )
+
+    # ── Gráfico Doughnut — Prêmios distribuídos ──────────────────────────────
+    premios_distribuicao = (
+        ParticipanteRoleta.objects
+        .exclude(premio__iexact=PREMIO_SEM_SORTE)
+        .filter(status='ganhou')
+        .values('premio')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
     labels_premios = [p['premio'] for p in premios_distribuicao]
-    data_premios = [p['total'] for p in premios_distribuicao]
+    data_premios   = [p['total']  for p in premios_distribuicao]
 
-    # 3. Dados Gráfico Linha (Giros dos últimos 7 dias)
-    hoje = datetime.now().date()
-    # Gera os últimos 7 dias
+    # ── Gráfico de Linha — 3 séries nos últimos 7 dias ───────────────────────
+    hoje        = datetime.now().date()
     dias_semana = [(hoje - timedelta(days=i)) for i in range(6, -1, -1)]
-    
-    # Agrupa do banco
-    giros_por_dia_db = ParticipanteRoleta.objects.filter(data_criacao__date__gte=dias_semana[0]) \
-        .annotate(dia=TruncDate('data_criacao')) \
-        .values('dia') \
-        .annotate(total=Count('id')) \
-        .order_by('dia')
-        
-    giros_dict = {str(item['dia']): item['total'] for item in giros_por_dia_db}
-    
-    labels_giros = [d.strftime('%d/%m') for d in dias_semana]
-    data_giros = [giros_dict.get(str(d), 0) for d in dias_semana] # preenche com zeros os dias vazios
+    data_inicio = dias_semana[0]
+
+    # Série 1 – Cadastros
+    cadastros_db = (
+        MembroClube.objects
+        .filter(data_cadastro__date__gte=data_inicio)
+        .annotate(dia=TruncDate('data_cadastro'))
+        .values('dia').annotate(total=Count('id')).order_by('dia')
+    )
+    cadastros_dict = {str(r['dia']): r['total'] for r in cadastros_db}
+
+    # Série 2 – Validações (gatilho telefone_verificado)
+    validacoes_db = (
+        ExtratoPontuacao.objects
+        .filter(regra__gatilho='telefone_verificado', data_recebimento__date__gte=data_inicio)
+        .annotate(dia=TruncDate('data_recebimento'))
+        .values('dia').annotate(total=Count('id')).order_by('dia')
+    )
+    validacoes_dict = {str(r['dia']): r['total'] for r in validacoes_db}
+
+    # Série 3 – Giros
+    giros_db = (
+        ParticipanteRoleta.objects
+        .filter(data_criacao__date__gte=data_inicio)
+        .annotate(dia=TruncDate('data_criacao'))
+        .values('dia').annotate(total=Count('id')).order_by('dia')
+    )
+    giros_dict = {str(r['dia']): r['total'] for r in giros_db}
+
+    labels_giros     = [d.strftime('%d/%m') for d in dias_semana]
+    data_cadastros   = [cadastros_dict.get(str(d), 0)  for d in dias_semana]
+    data_validacoes  = [validacoes_dict.get(str(d), 0) for d in dias_semana]
+    data_giros_chart = [giros_dict.get(str(d), 0)      for d in dias_semana]
 
     context = {
-        'total': total_participantes,
-        'premios_count': premios_restantes,
-        'ganhadores': ultimos_ganhadores,
-        
-        # Funil
-        'funil_iniciados': membros_iniciados,
-        'funil_validados': membros_validados,
-        'funil_jogadores': membros_jogadores,
-        'tx_validacao': tx_validacao,
-        'tx_jogadores': tx_agressao,
-        
-        # Charts - Converts to JSON strings for Javascript
-        'chart_labels_premios': json.dumps(labels_premios),
-        'chart_data_premios': json.dumps(data_premios),
-        'chart_labels_giros': json.dumps(labels_giros),
-        'chart_data_giros': json.dumps(data_giros),
+        'funil_iniciados':       membros_iniciados,
+        'funil_validados':       membros_validados,
+        'funil_jogadores':       membros_jogadores,
+        'total_giros':           total_giros,
+        'ganhadores':            ultimos_ganhadores,
+        'chart_labels_premios':  json.dumps(labels_premios),
+        'chart_data_premios':    json.dumps(data_premios),
+        'chart_labels_giros':    json.dumps(labels_giros),
+        'chart_data_cadastros':  json.dumps(data_cadastros),
+        'chart_data_validacoes': json.dumps(data_validacoes),
+        'chart_data_giros':      json.dumps(data_giros_chart),
     }
     return render(request, 'roleta/dashboard/home.html', context)
 

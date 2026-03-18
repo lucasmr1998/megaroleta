@@ -17,6 +17,7 @@ class PremioRoleta(models.Model):
     quantidade = models.IntegerField(default=0)
     posicoes = models.CharField(max_length=50, help_text="Posições na roleta (ex: 4,7)", default="1")
     probabilidade = models.IntegerField(default=1, help_text="Peso da probabilidade (ex: 1 para raro, 10 para comum)")
+    mensagem_vitoria = models.TextField(blank=True, help_text="Mensagem que aparecerá no alerta ao ganhar este prêmio.", default="Você ganhou um prêmio!")
     cidades_permitidas = models.ManyToManyField(Cidade, blank=True, related_name="premios", help_text="Selecione as cidades permitidas. Se deixar vazio, o prêmio valerá para QUALQUER cidade.")
 
     def __str__(self):
@@ -45,9 +46,26 @@ class RouletteAsset(models.Model):
         verbose_name_plural = "Assets da Roleta"
 
 class RoletaConfig(models.Model):
+    PERIODO_CHOICES = [
+        ('total',   'Total (para sempre)'),
+        ('diario',  'Diário (por dia corrido)'),
+        ('semanal', 'Semanal (últimos 7 dias)'),
+        ('mensal',  'Mensal (mês atual)'),
+    ]
+
     custo_giro = models.IntegerField(default=10, help_text="Pontos necessários para girar a roleta")
     xp_por_giro = models.IntegerField(default=5, help_text="Quantidade de XP ganha a cada giro da roleta")
     nome_clube = models.CharField(max_length=100, default="Clube MegaLink")
+    limite_giros_por_membro = models.IntegerField(
+        default=0,
+        help_text="Número máximo de giros permitidos por pessoa. Use 0 para sem limite."
+    )
+    periodo_limite = models.CharField(
+        max_length=10,
+        choices=PERIODO_CHOICES,
+        default='total',
+        help_text="Janela de tempo usada para contar os giros de cada membro."
+    )
 
     def __str__(self):
         return f"Configurações do {self.nome_clube}"
@@ -110,6 +128,7 @@ class RegraPontuacao(models.Model):
     pontos_xp = models.IntegerField(default=0, help_text="Quanto XP a pessoa ganha")
     limite_por_membro = models.IntegerField(default=1, help_text="Quantas vezes um mesmo membro pode ganhar? (0 para iimitado)")
     ativo = models.BooleanField(default=True)
+    visivel_na_roleta = models.BooleanField(default=True, help_text="Se marcado, esta missão aparecerá na lista da roleta para o usuário.")
 
     def __str__(self):
         return f"{self.nome_exibicao} ({self.pontos_saldo} Saldo | {self.pontos_xp} XP)"

@@ -4,8 +4,97 @@
 {% block page_title %}Estoque de Prêmios{% endblock %}
 
 {% block content %}
+
+<!-- Modal: Como funciona o Peso -->
+<div id="modal-peso"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div
+        style="background:#fff; border-radius:16px; max-width:540px; width:100%; padding:32px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <button onclick="document.getElementById('modal-peso').style.display='none'"
+            style="position:absolute; top:16px; right:16px; border:none; background:none; font-size:20px; cursor:pointer; color:#94a3b8;">✕</button>
+
+        <div style="text-align:center; margin-bottom:24px;">
+            <div
+                style="background:#667eea22; width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                <i class="fas fa-balance-scale" style="font-size:24px; color:#667eea;"></i>
+            </div>
+            <h3 style="margin:0; color:#1e293b;">Como funciona o Peso (Frequência)?</h3>
+        </div>
+
+        <p style="color:#475569; margin-bottom:16px; line-height:1.6;">
+            O sistema usa <strong>sorteio ponderado</strong>: quanto maior o peso de um prêmio,
+            maior a chance de ele ser sorteado. A probabilidade de cada prêmio é calculada como:
+        </p>
+
+        <div
+            style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:16px; text-align:center;">
+            <code style="font-size:15px; color:#667eea; font-weight:700;">
+                Chance (%) = Peso do prêmio ÷ Soma de todos os pesos ({{ soma_pesos }}) × 100
+            </code>
+        </div>
+
+        <p style="color:#475569; margin-bottom:16px; line-height:1.6;"><strong>Porcentagem Real de Chance:</strong></p>
+        <div style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                <thead>
+                    <tr style="background:#f1f5f9; position: sticky; top: 0; z-index: 1;">
+                        <th style="padding:10px 12px; text-align:left; border-radius:6px 0 0 0;">Prêmio</th>
+                        <th style="padding:10px 12px; text-align:center;">Peso</th>
+                        <th style="padding:10px 12px; text-align:center; border-radius:0 6px 0 0;">Chance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in premios_com_chance %}
+                    <tr style="{% if forloop.counter|divisibleby:2 %}background:#f8fafc;{% endif %}">
+                        <td style="padding:8px 12px; border-bottom: 1px solid #f1f5f9;">
+                            <strong>{{ p.nome }}</strong>
+                            {% if p.quantidade <= 0 %} <span style="font-size: 10px; color: #ef4444; margin-left: 4px;">
+                                (ZERADO)</span>
+                                {% endif %}
+                        </td>
+                        <td style="padding:8px 12px; text-align:center; border-bottom: 1px solid #f1f5f9;">{{
+                            p.probabilidade }}</td>
+                        <td style="padding:8px 12px; text-align:center; border-bottom: 1px solid #f1f5f9;">
+                            <span
+                                style="font-weight: 700; color: {% if p.chance > 15 %}#22c55e{% elif p.chance > 5 %}#3b82f6{% else %}#f59e0b{% endif %};">
+                                {{ p.chance }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="padding: 20px; text-align: center; color: #94a3b8;">Nenhum prêmio
+                            cadastrado.</td>
+                    </tr>
+                    {% endfor %}
+                    <tr style="background:#f1f5f9; font-weight:700;">
+                        <td style="padding:10px 12px;">TOTAL</td>
+                        <td style="padding:10px 12px; text-align:center;">{{ soma_pesos }}</td>
+                        <td style="padding:10px 12px; text-align:center;">100%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div
+            style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:14px; font-size:13px; color:#1e40af; line-height:1.6;">
+            <i class="fas fa-lightbulb" style="margin-right:6px;"></i>
+            <strong>Dica:</strong> Os valores absolutos não importam — só a proporção entre eles.
+            Peso 70/20/10 é igual a peso 7/2/1. Apenas prêmios com <strong>estoque &gt; 0</strong>
+            e com a <strong>cidade correta</strong> do cliente entram no sorteio.
+        </div>
+    </div>
+</div>
+
 <div style="margin-bottom: 20px; background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
-    <h3 style="margin-top: 0; margin-bottom: 15px;">Adicionar Novo Prêmio</h3>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+        <h3 style="margin:0;">Adicionar Novo Prêmio</h3>
+        <button onclick="document.getElementById('modal-peso').style.display='flex'"
+            style="display:inline-flex; align-items:center; gap:7px; background:#667eea11; color:#667eea; border:1px solid #667eea44; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; transition:background 0.2s;"
+            onmouseover="this.style.background='#667eea22'" onmouseout="this.style.background='#667eea11'">
+            <i class="fas fa-question-circle"></i> Como funciona o Peso?
+        </button>
+    </div>
     <form method="post" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
         {% csrf_token %}
         <input type="hidden" name="action" value="novo_premio">
@@ -35,22 +124,32 @@
                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
         </div>
         <div style="width: 100px;">
-            <label
-                style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">Peso</label>
+            <label style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">
+                Peso
+                <button type="button" onclick="document.getElementById('modal-peso').style.display='flex'"
+                    style="background:none; border:none; color:#667eea; cursor:pointer; padding:0 0 0 3px; font-size:12px;"
+                    title="Como funciona?">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </label>
             <input type="number" name="probabilidade" value="1" title="Maior = Mais frequente" required
                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
         </div>
-        <div style="width: 120px;">
-            <label
-                style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">Posições</label>
-            <input type="text" name="posicoes" placeholder="Ex: 2,5" required
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-        </div>
-        <div>
-            <button type="submit" class="btn-primary" style="padding: 10px 20px; white-space: nowrap;"><i
-                    class="fas fa-plus"></i> Adicionar Prêmio</button>
-        </div>
-    </form>
+        <input type="text" name="posicoes" placeholder="Ex: 2,5" required
+            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+</div>
+<div style="flex: 2; min-width: 250px;">
+    <label style="display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 5px;">Mensagem
+        personalizada (Alerta)</label>
+    <input type="text" name="mensagem_vitoria" placeholder="Ex: Parabéns! Você ganhou um PIX!" required
+        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+</div>
+<div>
+    <button type="submit" class="btn-primary" style="padding: 10px 20px; white-space: nowrap;">
+        <i class="fas fa-plus"></i> Adicionar Prêmio
+    </button>
+</div>
+</form>
 </div>
 
 <div class="data-table-container">
@@ -60,8 +159,16 @@
                 <th>Prêmio</th>
                 <th>Localidade</th>
                 <th>Quantidade Atual</th>
-                <th>Peso (Frequência)</th>
+                <th>
+                    Peso (Frequência)
+                    <button type="button" onclick="document.getElementById('modal-peso').style.display='flex'"
+                        style="background:none; border:none; color:#667eea; cursor:pointer; padding:0 0 0 4px; font-size:12px;"
+                        title="Como funciona o Peso?">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                </th>
                 <th>Posições (0-12)</th>
+                <th>Mensagem de Vitória (Alerta)</th>
                 <th>Ação</th>
             </tr>
         </thead>
@@ -96,11 +203,16 @@
                         placeholder="Ex: 4,7">
                 </td>
                 <td>
+                    <textarea name="mensagem_vitoria" form="form_premio_{{ p.id }}"
+                        style="width: 250px; padding: 8px; border: 1px solid #ddd; border-radius: 8px; height: 60px;">{{ p.mensagem_vitoria }}</textarea>
+                </td>
+                <td>
                     <form method="post" id="form_premio_{{ p.id }}" style="display:inline;">
                         {% csrf_token %}
                         <input type="hidden" name="premio_id" value="{{ p.id }}">
-                        <button type="submit" class="badge badge-success" style="border:none; cursor:pointer;"><i
-                                class="fas fa-save"></i> Atualizar</button>
+                        <button type="submit" class="badge badge-success" style="border:none; cursor:pointer;">
+                            <i class="fas fa-save"></i> Atualizar
+                        </button>
                     </form>
                 </td>
                 <td>
@@ -110,8 +222,9 @@
                         <input type="hidden" name="premio_id" value="{{ p.id }}">
                         <button type="submit" class="badge badge-success"
                             style="background: #fee2e2; color: #b91c1c; border:none; cursor:pointer;"
-                            onclick="return confirm('Tem certeza que deseja apagar o prêmio {{ p.nome }}?');"><i
-                                class="fas fa-trash"></i> Apagar</button>
+                            onclick="return confirm('Tem certeza que deseja apagar o prêmio {{ p.nome }}?');">
+                            <i class="fas fa-trash"></i> Apagar
+                        </button>
                     </form>
                 </td>
             </tr>
