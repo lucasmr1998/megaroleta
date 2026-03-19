@@ -1,0 +1,150 @@
+{% extends 'roleta/membro/base_membro.html' %}
+{% load static %}
+
+{% block title %}Cupons - Megalink{% endblock %}
+
+{% block extra_css %}
+.cupom-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px; border: 1px solid #e5e7eb; border-radius: 14px;
+    margin-bottom: 12px; background: white; transition: box-shadow 0.2s;
+}
+.cupom-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.cupom-img {
+    width: 56px; height: 56px; border-radius: 12px; object-fit: cover;
+    flex-shrink: 0; border: 1px solid #f3f4f6;
+}
+.cupom-img-placeholder {
+    width: 56px; height: 56px; border-radius: 12px;
+    background: #e0e7ff; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; color: #6366f1; font-size: 20px;
+}
+.cupom-info { flex: 1; min-width: 0; }
+.cupom-titulo { font-weight: 700; font-size: 14px; color: #1e293b; margin-bottom: 2px; }
+.cupom-parceiro { font-size: 12px; color: #64748b; }
+.cupom-desconto { text-align: center; flex-shrink: 0; }
+.cupom-desconto-valor { font-size: 22px; font-weight: 800; color: #3b82f6; }
+.btn-resgatar {
+    display: block; margin-top: 6px; padding: 8px 14px;
+    background: #3b82f6; color: white; border: none; border-radius: 8px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    font-family: 'Inter', sans-serif; transition: opacity 0.2s;
+}
+.btn-resgatar:hover { opacity: 0.9; }
+.btn-resgatar:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.resgate-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid #f3f4f6;
+}
+{% endblock %}
+
+{% block header %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <a href="{% url 'membro_hub' %}" class="btn-voltar" style="margin:0;"><i class="fas fa-arrow-left"></i> Menu</a>
+    <div style="display:flex; align-items:center; gap:10px; color:white;">
+        <span style="font-size:13px; font-weight:700;">{{ membro.nome|truncatewords:1 }}</span>
+        <span style="font-size:13px; font-weight:800; color:#fbbf24;">{{ membro.saldo }} PTs</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="card-page">
+    <div class="card-page-title"><i class="fas fa-ticket-alt"></i> Cupons Dispon&iacute;veis</div>
+
+    {% for c in cupons %}
+    <div class="cupom-item">
+        {% if c.imagem %}
+        <img src="{{ c.imagem.url }}" class="cupom-img">
+        {% elif c.parceiro.logo %}
+        <img src="{{ c.parceiro.logo.url }}" class="cupom-img">
+        {% else %}
+        <div class="cupom-img-placeholder"><i class="fas fa-ticket-alt"></i></div>
+        {% endif %}
+        <div class="cupom-info">
+            <div class="cupom-titulo">{{ c.titulo }}</div>
+            <div class="cupom-parceiro">{{ c.parceiro.nome }}</div>
+            <div style="margin-top:4px;">
+                {% if c.modalidade == 'gratuito' %}
+                <span class="badge badge-success">Gr&aacute;tis</span>
+                {% elif c.modalidade == 'pontos' %}
+                <span class="badge badge-warning">{{ c.custo_pontos }} pts</span>
+                {% else %}
+                <span class="badge badge-info">{{ c.nivel_minimo.nome }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="cupom-desconto">
+            <div class="cupom-desconto-valor">
+                {% if c.tipo_desconto == 'percentual' %}{{ c.valor_desconto }}%{% else %}R${{ c.valor_desconto }}{% endif %}
+            </div>
+            <button class="btn-resgatar" onclick="resgatar({{ c.id }}, this)">Resgatar</button>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center" style="padding:40px 0;">
+        <i class="fas fa-ticket-alt" style="font-size:40px; color:#e5e7eb; margin-bottom:12px;"></i>
+        <p class="text-muted" style="font-size:14px;">Nenhum cupom dispon&iacute;vel no momento.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% if meus_resgates %}
+<div class="card-page" style="margin-top:20px;">
+    <div class="card-page-title"><i class="fas fa-history"></i> Meus Resgates</div>
+    {% for r in meus_resgates %}
+    <div class="resgate-item">
+        <div>
+            <div style="font-weight:700; font-size:13px;">{{ r.cupom.titulo }}</div>
+            <div style="font-size:11px; color:#64748b;">{{ r.cupom.parceiro.nome }} &middot; {{ r.data_resgate|date:"d/m/Y" }}</div>
+        </div>
+        <div style="text-align:right;">
+            <code style="font-size:13px; font-weight:700; color:#3b82f6; letter-spacing:1px;">{{ r.codigo_unico }}</code>
+            <br>
+            {% if r.status == 'resgatado' %}<span class="badge badge-warning">Pendente</span>
+            {% elif r.status == 'utilizado' %}<span class="badge badge-success">Utilizado</span>
+            {% else %}<span class="badge badge-danger">{{ r.get_status_display }}</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+function resgatar(cupomId, btn) {
+    if (!confirm('Confirmar resgate deste cupom?')) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+    $.ajax({
+        url: '/roleta/api/cupons/resgatar/',
+        method: 'POST',
+        data: {
+            csrfmiddlewaretoken: '{{ csrf_token }}',
+            cupom_id: cupomId
+        },
+        success: function(res) {
+            if (res.success) {
+                btn.textContent = 'Resgatado!';
+                btn.style.background = '#10b981';
+                alert('Cupom resgatado! Código: ' + res.codigo + '\n\nApresente este código no estabelecimento.');
+                location.reload();
+            } else {
+                alert(res.error || 'Erro ao resgatar.');
+                btn.disabled = false;
+                btn.textContent = 'Resgatar';
+            }
+        },
+        error: function() {
+            alert('Erro de conexão.');
+            btn.disabled = false;
+            btn.textContent = 'Resgatar';
+        }
+    });
+}
+</script>
+{% endblock %}

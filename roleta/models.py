@@ -103,6 +103,13 @@ class MembroClube(models.Model):
     data_cadastro = models.DateTimeField(auto_now_add=True)
     id_cliente_hubsoft = models.IntegerField(null=True, blank=True)
     validado = models.BooleanField(default=False, help_text="Se o membro já validou o OTP")
+    codigo_indicacao = models.CharField(max_length=10, unique=True, blank=True, null=True, help_text="Código único para link de indicação")
+
+    def save(self, *args, **kwargs):
+        if not self.codigo_indicacao:
+            import uuid
+            self.codigo_indicacao = uuid.uuid4().hex[:8].upper()
+        super().save(*args, **kwargs)
 
     @property
     def nivel_atual(self):

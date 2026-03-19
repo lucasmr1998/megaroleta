@@ -7,6 +7,10 @@ from roleta.services.hubsoft_service import HubsoftService
 from roleta.services.otp_service import OTPService
 from roleta.services.sorteio_service import SorteioService
 from roleta.services.gamification_service import GamificationService
+from parceiros.models import CupomDesconto, ResgateCupom
+from parceiros.services import CupomService
+from indicacoes.models import Indicacao, IndicacaoConfig
+from indicacoes.services import IndicacaoService
 import random
 import requests
 import time
@@ -34,6 +38,9 @@ def roleta_init_dados(request):
     auth_prox_nivel_xp = 0
     auth_progresso_nivel = 0
     missoes = []
+    cupons_disponiveis = []
+    indicacao_data = {}
+    auth_codigo_indicacao = ''
     
     if auth_membro_id:
         try:
@@ -71,6 +78,49 @@ def roleta_init_dados(request):
                     'concluidas': conclusoes,
                     'disponivel': r.limite_por_membro == 0 or conclusoes < r.limite_por_membro
                 })
+            # Cupons disponíveis
+            cupons_list = CupomService.cupons_disponiveis(membro)
+            for cupom in cupons_list:
+                resgates_membro = ResgateCupom.objects.filter(
+                    membro=membro, cupom=cupom
+                ).exclude(status='cancelado').count()
+                if resgates_membro >= cupom.limite_por_membro:
+                    continue
+                cupons_disponiveis.append({
+                    'id': cupom.id,
+                    'titulo': cupom.titulo,
+                    'descricao': cupom.descricao,
+                    'parceiro': cupom.parceiro.nome,
+                    'parceiro_logo': cupom.parceiro.logo.url if cupom.parceiro.logo else '',
+                    'imagem': cupom.imagem.url if cupom.imagem else '',
+                    'tipo_desconto': cupom.tipo_desconto,
+                    'valor_desconto': str(cupom.valor_desconto),
+                    'modalidade': cupom.modalidade,
+                    'custo_pontos': cupom.custo_pontos,
+                    'nivel_minimo': cupom.nivel_minimo.nome if cupom.nivel_minimo else None,
+                })
+
+            # Indicações
+            auth_codigo_indicacao = membro.codigo_indicacao or ''
+            todas_indicacoes = Indicacao.objects.filter(membro_indicador=membro)
+            indicacao_config, _ = IndicacaoConfig.objects.get_or_create(id=1)
+            indicacao_data = {
+                'codigo': auth_codigo_indicacao,
+                'total': todas_indicacoes.count(),
+                'convertidas': todas_indicacoes.filter(status='convertido').count(),
+                'pendentes': todas_indicacoes.filter(status='pendente').count(),
+                'lista': [
+                    {
+                        'nome': i.nome_indicado,
+                        'status': i.status,
+                        'status_display': i.get_status_display(),
+                        'data': i.data_indicacao.strftime('%d/%m/%Y'),
+                    }
+                    for i in todas_indicacoes.order_by('-data_indicacao')[:20]
+                ],
+                'texto_compartilhar': f"Olá! Sou cliente Megalink e quero te indicar para o clube de fidelidade. Acesse:",
+            }
+
         except MembroClube.DoesNotExist:
             request.session.pop('auth_membro_id', None)
             request.session.pop('auth_membro_nome', None)
@@ -107,6 +157,8 @@ def roleta_init_dados(request):
         'auth_prox_nivel_xp': auth_prox_nivel_xp,
         'auth_progresso_nivel': auth_progresso_nivel,
         'missoes': missoes,
+        'cupons': cupons_disponiveis,
+        'indicacao': indicacao_data,
         'erro': erro,
         # Dados de limite de giros
         'limite_giros_por_membro': config.limite_giros_por_membro,
@@ -701,3 +753,64 @@ def pre_cadastrar(request):
                     f.write(f"Membro {cpf} ATUALIZADO (Pre-registro)\n")
                 return JsonResponse({'success': True})
     return JsonResponse({'success': False})
+
+
+def api_resgatar_cupom(request):
+    """API para membro resgatar cupom via frontend."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método inválido'}, status=405)
+
+    auth_membro_id = request.session.get('auth_membro_id')
+    if not auth_membro_id:
+        return JsonResponse({'success': False, 'error': 'Não autenticado'}, status=401)
+
+    cupom_id = request.POST.get('cupom_id')
+    if not cupom_id:
+        return JsonResponse({'success': False, 'error': 'Cupom não informado'})
+
+    try:
+        membro = MembroClube.objects.get(id=auth_membro_id)
+    except MembroClube.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Membro não encontrado'})
+
+    sucesso, msg, resgate = CupomService.resgatar_cupom(membro, cupom_id)
+    if sucesso:
+        return JsonResponse({
+            'success': True,
+            'message': msg,
+            'codigo': resgate.codigo_unico,
+            'saldo_atual': membro.saldo,
+        })
+    return JsonResponse({'success': False, 'error': msg})
+
+
+def api_criar_indicacao(request):
+    """API para membro criar indicação via frontend."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método inválido'}, status=405)
+
+    auth_membro_id = request.session.get('auth_membro_id')
+    if not auth_membro_id:
+        return JsonResponse({'success': False, 'error': 'Não autenticado'}, status=401)
+
+    try:
+        membro = MembroClube.objects.get(id=auth_membro_id)
+    except MembroClube.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Membro não encontrado'})
+
+    nome = request.POST.get('nome', '').strip()
+    telefone = request.POST.get('telefone', '').strip()
+    cpf = request.POST.get('cpf', '').strip()
+    cidade = request.POST.get('cidade', '').strip()
+
+    if not nome or not telefone:
+        return JsonResponse({'success': False, 'error': 'Nome e telefone são obrigatórios'})
+
+    sucesso, msg, indicacao = IndicacaoService.criar_indicacao(
+        membro_indicador=membro,
+        nome=nome,
+        telefone=telefone,
+        cpf=cpf,
+        cidade=cidade,
+    )
+    return JsonResponse({'success': sucesso, 'message': msg})

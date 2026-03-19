@@ -26,7 +26,7 @@
         }
 
         body {
-            background: var(--gray-100);
+            background: var(--primary-blue);
             color: #333;
             min-height: 100vh;
             display: flex;
@@ -39,16 +39,16 @@
             display: flex;
             max-width: 1200px;
             width: 100%;
-            background: var(--white);
+            background: var(--primary-blue);
             border-radius: 30px;
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
         }
 
         .left-panel {
             flex: 1 1 50%;
             width: 50%;
-            background: var(--primary-blue);
+            background: rgba(255,255,255,0.04);
+            border-right: 1px solid rgba(255,255,255,0.08);
             padding: 40px;
             display: flex;
             flex-direction: column;
@@ -59,10 +59,10 @@
         }
 
         .right-panel {
-            flex: 1 1 50%;
-            width: 50%;
-            padding: 50px;
-            background: var(--white);
+            flex: 1;
+            width: 100%;
+            padding: 40px;
+            background: transparent;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -92,6 +92,17 @@
             width: 60px;
             z-index: 10;
             filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        #result-area {
+            color: white;
         }
 
         .form-header {
@@ -300,6 +311,7 @@
             .right-panel {
                 width: 100%;
                 padding: 30px 20px;
+                background: transparent;
             }
 
             .roulette-wrapper {
@@ -654,9 +666,9 @@
         <h3 id="loading-text" style="font-weight: 600; font-size: 18px;">Processando...</h3>
     </div>
 
-    <div class="main-container">
-        <!-- Left Panel: Roulette -->
-        <div class="left-panel">
+    <div class="main-container" style="max-width:520px;">
+        <!-- Left Panel: Hidden (roleta moved to /membro/jogar/) -->
+        <div class="left-panel" style="display:none;">
             <div class="roulette-wrapper" id="roulette-wrapper">
                 <div style="display:flex; align-items:center; justify-content:center; width:100%; height:400px; color:#94a3b8;">
                     <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
@@ -1045,14 +1057,24 @@
                                         iniciarSorteio();
                                     }, 500);
                                 } else if (data.is_authenticated) {
+                                    // Membro logado: redirecionar para o hub
+                                    window.location.href = '/roleta/membro/';
+                                    return;
+                                } else if (false) {
                                     $('#multiStepForm').hide();
                                     $('#result-area').show();
 
-
+                                    // Store data globally
+                                    window.authData = data;
+                                    window.authMissoes = data.missoes || [];
+                                    window.authCupons = data.cupons || [];
+                                    window.authIndicacao = data.indicacao || {};
 
                                     let splitName = data.auth_nome ? data.auth_nome.split(' ') : ['Cliente'];
                                     let nomeExibir = splitName.length > 1 ? splitName[0] + ' ' + splitName[1] : splitName[0];
+                                    let saldoExibido = (data.auth_saldo !== null && data.auth_saldo !== undefined) ? data.auth_saldo : 0;
 
+                                    // Action button for roulette
                                     let actionHTML = '';
                                     if (data.auth_saldo >= data.custo_giro) {
                                         actionHTML = '<form id="authSpinForm">' +
@@ -1066,76 +1088,47 @@
                                             '</div>';
                                     }
 
-                                    // Gamification HTML
-                                    let xpProgresso = data.auth_progresso_nivel || 0;
-                                    let maxLevelTxt = data.auth_prox_nivel_xp === data.auth_xp ? 'NÍVEL MÁXIMO' : data.auth_xp + ' / ' + data.auth_prox_nivel_xp + ' XP';
+                                    // ── Header com voltar ao menu ──
 
-                                    // Armazenar missões e gerar HTML Inline
-                                    window.authMissoes = data.missoes || [];
-                                    let inlinemissionListHtml = '';
-
+                                    // ── TAB: Roleta (missões) ──
+                                    let missionsHtml = '';
                                     if (window.authMissoes.length === 0) {
-                                        inlinemissionListHtml = '<div style="text-align:center; color:#94a3b8; padding:20px 0 10px 0; font-size:13px;">Nenhuma missão ativa no momento.</div>';
+                                        missionsHtml = '<div style="text-align:center; color:#94a3b8; padding:20px 0; font-size:13px;">Nenhuma missão ativa.</div>';
                                     } else {
                                         window.authMissoes.forEach(m => {
-                                            let isCompleted = !m.disponivel;
-                                            let styleClass = isCompleted ? 'completed' : '';
-                                            let iconHtml = isCompleted ? '<i class="fas fa-check-circle" style="color: #10b981; font-size: 18px;"></i>' : '<i class="fas fa-medal" style="color: #64748b; font-size: 18px;"></i>';
-                                            let btnHtml = isCompleted ? 'Concluída' : ('+' + m.recompensa_giros + ' G | +' + m.recompensa_xp + ' XP');
-                                            let bgClass = isCompleted ? '; background: #f8fafc;' : '; background: #fff;';
-                                            let borderClass = isCompleted ? '; border: 1px solid #e2e8f0;' : '; border: 1px solid #cbd5e0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);';
-
-                                            inlinemissionListHtml += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-radius: 10px; margin-bottom: 8px' + bgClass + borderClass + '">' +
-                                                '<div style="display: flex; align-items: center; gap: 12px;">' +
-                                                '<div style="display: flex; justify-content: center; width: 24px;">' + iconHtml + '</div>' +
-                                                '<div style="text-align: left;">' +
-                                                '<div style="font-weight: 700; color: #1e293b; font-size: 13px; margin-bottom: 2px;">' + m.nome + '</div>' +
-                                                '<div style="font-size: 11px; color: #64748b;">' + (m.limite > 0 ? (m.concluidas + '/' + m.limite + ' realizadas') : 'Ilimitado') + '</div>' +
+                                            let done = !m.disponivel;
+                                            let icon = done ? '<i class="fas fa-check-circle" style="color:#10b981; font-size:18px;"></i>' : '<i class="fas fa-medal" style="color:#64748b; font-size:18px;"></i>';
+                                            let badge = done ? 'Concluída' : ('+' + m.recompensa_giros + ' G | +' + m.recompensa_xp + ' XP');
+                                            let bg = done ? '#f8fafc' : '#fff';
+                                            let border = done ? '1px solid #e2e8f0' : '1px solid #cbd5e0';
+                                            let badgeStyle = done ? 'color:#10b981; background:#d1fae5;' : 'color:var(--primary-blue); background:#e0e7ff;';
+                                            missionsHtml += '<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:10px; margin-bottom:8px; background:' + bg + '; border:' + border + ';">' +
+                                                '<div style="display:flex; align-items:center; gap:12px;">' +
+                                                '<div style="width:24px; text-align:center;">' + icon + '</div>' +
+                                                '<div><div style="font-weight:700; color:#1e293b; font-size:13px;">' + m.nome + '</div>' +
+                                                '<div style="font-size:11px; color:#64748b;">' + (m.limite > 0 ? m.concluidas + '/' + m.limite + ' realizadas' : 'Ilimitado') + '</div></div>' +
                                                 '</div>' +
-                                                '</div>' +
-                                                '<div style="font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 6px; white-space: nowrap; ' + (isCompleted ? 'color: #10b981; background: #d1fae5;' : 'color: var(--primary-blue); background: #e0e7ff;') + '">' + btnHtml + '</div>' +
+                                                '<div style="font-size:12px; font-weight:700; padding:6px 10px; border-radius:6px; white-space:nowrap; ' + badgeStyle + '">' + badge + '</div>' +
                                                 '</div>';
                                         });
                                     }
-
-                                    let gamificationHtml = '<div style="background: white; border: 1px solid #edf2f7; border-radius: 15px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">' +
-                                        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">' +
-                                        '<div class="level-badge"><i class="fas fa-medal"></i> ' + (data.auth_nivel || 'Iniciante') + '</div>' +
-                                        '<div style="font-size: 12px; font-weight: 700; color: #64748b;">' + maxLevelTxt + '</div>' +
-                                        '</div>' +
-                                        '<div class="xp-bar-container" style="margin-bottom: 20px;">' +
-                                        '<div class="xp-bar-fill" style="width: ' + xpProgresso + '%;"></div>' +
-                                        '</div>' +
-                                        '<div style="border-top: 1px dashed #e2e8f0; padding-top: 15px;">' +
-                                        '<h4 style="font-size: 13px; font-weight: 800; color: #334155; margin: 0 0 12px 0; text-transform: uppercase;">' +
-                                        '<i class="fas fa-gift" style="color: #fbbf24; margin-right: 5px;"></i> Missões para ganhar giros' +
-                                        '</h4>' +
-                                        '<div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">' +
-                                        inlinemissionListHtml +
-                                        '</div>' +
-                                        '</div>' +
+                                    let missionsCard = '<div style="background:white; border:1px solid #edf2f7; border-radius:15px; padding:20px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">' +
+                                        '<h4 style="font-size:13px; font-weight:800; color:#334155; margin:0 0 12px; text-transform:uppercase;"><i class="fas fa-gift" style="color:#fbbf24; margin-right:5px;"></i>Missões para ganhar giros</h4>' +
+                                        '<div style="max-height:300px; overflow-y:auto;">' + missionsHtml + '</div>' +
                                         '</div>';
 
-                                    let saldoExibido = (data.auth_saldo !== null && data.auth_saldo !== undefined) ? data.auth_saldo : 0;
-
+                                    // ── Render ──
                                     $('#result-area').html(
                                         '<div id="ready-to-spin">' +
-                                        '<div class="user-info-box">' +
-                                        '<div style="display: flex; align-items: center; gap: 12px;">' +
-                                        '<div style="background: var(--primary-blue); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.2); flex-shrink: 0;">' +
-                                        '<i class="fas fa-user" style="font-size: 20px; color: white;"></i>' +
-                                        '</div>' +
-                                        '<div style="text-align: left;">' +
-                                        '<h3 style="color: #1e293b; font-size: 15px; font-weight: 800; margin: 0 0 3px 0; text-transform: uppercase;">' + nomeExibir + '</h3>' +
-                                        '<div style="display: flex; align-items: baseline; gap: 5px;">' +
-                                        '<span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Saldo:</span>' +
-                                        '<strong style="font-size: 16px; color: var(--primary-blue); line-height: 1;">' + saldoExibido + ' <span style="font-size: 11px;">PTs</span></strong>' +
+                                        // Header: voltar + nome + saldo
+                                        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">' +
+                                        '<a href="/roleta/membro/" style="display:flex; align-items:center; gap:6px; color:rgba(255,255,255,0.6); font-size:13px; font-weight:600; text-decoration:none;"><i class="fas fa-arrow-left"></i> Menu</a>' +
+                                        '<div style="display:flex; align-items:center; gap:10px;">' +
+                                        '<span style="font-size:13px; font-weight:700; color:white;">' + nomeExibir + '</span>' +
+                                        '<span style="font-size:13px; font-weight:800; color:#fbbf24;">' + saldoExibido + ' PTs</span>' +
                                         '</div>' +
                                         '</div>' +
-                                        '</div>' +
-                                        '<a href="/roleta/logout/" onclick="showLoading(\'Saindo...\')" class="btn-logout"><i class="fas fa-sign-out-alt" style="margin-bottom: 2px;"></i> Sair</a>' +
-                                        '</div>' +
-                                        gamificationHtml +
+                                        missionsCard +
                                         '</div>'
                                     );
 
@@ -1194,6 +1187,49 @@
                     });
 
                     // ------------------ Gamification Render Logic ------------------
+                    // ── Cupom & Indicação Functions ──
+                    function resgatarCupom(cupomId, btn) {
+                        if (!confirm('Confirmar resgate deste cupom?')) return;
+                        btn.disabled = true;
+                        btn.textContent = '...';
+                        $.ajax({
+                            url: '/roleta/api/cupons/resgatar/',
+                            method: 'POST',
+                            data: {
+                                csrfmiddlewaretoken: getCsrfToken(),
+                                cupom_id: cupomId
+                            },
+                            success: function(res) {
+                                if (res.success) {
+                                    showCustomModal('Cupom Resgatado!', 'Seu código: <strong style="font-size:20px; letter-spacing:2px;">' + res.codigo + '</strong><br><br>Apresente este código no estabelecimento.', 'success');
+                                    btn.textContent = 'Resgatado!';
+                                    btn.style.background = '#10b981';
+                                    // Update saldo display
+                                    if (res.saldo_atual !== undefined) {
+                                        $('.user-info-box strong').html(res.saldo_atual + ' <span style="font-size:10px;">PTs</span>');
+                                    }
+                                } else {
+                                    showCustomModal('Erro', res.error || 'Erro ao resgatar cupom.', 'error');
+                                    btn.disabled = false;
+                                    btn.textContent = 'Resgatar';
+                                }
+                            },
+                            error: function() {
+                                showCustomModal('Erro', 'Erro de conexão.', 'error');
+                                btn.disabled = false;
+                                btn.textContent = 'Resgatar';
+                            }
+                        });
+                    }
+
+                    function copiarLinkIndicacao() {
+                        var input = document.getElementById('link-indicacao-input');
+                        input.select();
+                        navigator.clipboard.writeText(input.value).then(function() {
+                            showCustomModal('Link Copiado!', 'Compartilhe com seus amigos para ganhar pontos.', 'success');
+                        });
+                    }
+
                     function openMissionsModal() {
                         let listHtml = '';
 

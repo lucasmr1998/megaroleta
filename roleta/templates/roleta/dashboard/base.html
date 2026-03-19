@@ -8,72 +8,153 @@
     <title>{% block title %}Dashboard Roleta{% endblock %}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{% static 'roleta/css/dashboard.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'roleta/css/dashboard.css' %}?v=3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+    <!-- Top Bar: M&oacute;dulos -->
+    <header class="topbar">
+        <div class="topbar-brand">Megalink</div>
+        <nav class="topbar-modules">
+            {% with url_name=request.resolver_match.url_name %}
+            <a href="{% url 'dashboard_home' %}"
+                class="topbar-module {% if url_name == 'dashboard_home' or url_name == 'dashboard_premios' or url_name == 'dashboard_participantes' or url_name == 'dashboard_extrato_membro' or url_name == 'dashboard_cidades' %}active{% endif %}">
+                <i class="fas fa-dice"></i> Roleta
+            </a>
+            <a href="{% url 'dashboard_parceiros_home' %}"
+                class="topbar-module {% if url_name == 'dashboard_parceiros_home' or url_name == 'dashboard_parceiros' or url_name == 'dashboard_cupons' or url_name == 'dashboard_cupons_resgates' or url_name == 'dashboard_cupom_detalhe' %}active{% endif %}">
+                <i class="fas fa-handshake"></i> Parceiros
+            </a>
+            <a href="{% url 'dashboard_indicacoes_home' %}"
+                class="topbar-module {% if url_name == 'dashboard_indicacoes_home' or url_name == 'dashboard_indicacoes' or url_name == 'dashboard_indicacoes_membros' or url_name == 'dashboard_indicacoes_visual' %}active{% endif %}">
+                <i class="fas fa-user-plus"></i> Indica&ccedil;&otilde;es
+            </a>
+            <a href="{% url 'dashboard_giros' %}"
+                class="topbar-module {% if url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' %}active{% endif %}">
+                <i class="fas fa-cogs"></i> Opera&ccedil;&atilde;o
+            </a>
+            <a href="{% url 'dashboard_relatorios' %}"
+                class="topbar-module {% if url_name == 'dashboard_relatorios' or url_name == 'dashboard_relatorios_indicacoes' or url_name == 'dashboard_relatorios_parceiros' %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i> Relat&oacute;rios
+            </a>
+            {% endwith %}
+        </nav>
+        <div class="topbar-actions">
+            <a href="{% url 'documentacao' %}" class="topbar-action" title="Documenta&ccedil;&atilde;o">
+                <i class="fas fa-book"></i>
+            </a>
+            <a href="{% url 'dashboard_config' %}" class="topbar-action" title="Configura&ccedil;&otilde;es">
+                <i class="fas fa-cog"></i>
+            </a>
+            <a href="{% url 'roleta_index' %}" class="topbar-action" target="_blank" title="Ver Roleta">
+                <i class="fas fa-external-link-alt"></i>
+            </a>
+        </div>
+    </header>
+
     <div class="app-container">
+        <!-- Sidebar: P&aacute;ginas do m&oacute;dulo ativo -->
         <aside class="sidebar">
-            <div class="sidebar-brand">Roleta</div>
+            {% with url_name=request.resolver_match.url_name %}
 
-            <div class="sidebar-nav">
-                <nav>
-                    <a href="{% url 'dashboard_home' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
-                        <i class="fas fa-chart-line"></i> Dashboard
-                    </a>
-                    <a href="{% url 'dashboard_premios' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_premios' %}active{% endif %}">
-                        <i class="fas fa-gift"></i> Pr&ecirc;mios
-                    </a>
-                    <a href="{% url 'dashboard_participantes' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_participantes' %}active{% endif %}">
-                        <i class="fas fa-users"></i> Membros
-                    </a>
-                    <a href="{% url 'dashboard_cidades' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_cidades' %}active{% endif %}">
-                        <i class="fas fa-map-marker-alt"></i> Cidades
-                    </a>
+            {% if url_name == 'dashboard_home' or url_name == 'dashboard_premios' or url_name == 'dashboard_participantes' or url_name == 'dashboard_extrato_membro' or url_name == 'dashboard_cidades' %}
+            <!-- M&oacute;dulo: Roleta -->
+            <div class="sidebar-section-label">Roleta</div>
+            <a href="{% url 'dashboard_home' %}" class="nav-item {% if url_name == 'dashboard_home' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="{% url 'dashboard_premios' %}" class="nav-item {% if url_name == 'dashboard_premios' %}active{% endif %}">
+                <i class="fas fa-gift"></i> Pr&ecirc;mios
+            </a>
+            <a href="{% url 'dashboard_participantes' %}" class="nav-item {% if url_name == 'dashboard_participantes' or url_name == 'dashboard_extrato_membro' %}active{% endif %}">
+                <i class="fas fa-users"></i> Membros
+            </a>
+            <a href="{% url 'dashboard_cidades' %}" class="nav-item {% if url_name == 'dashboard_cidades' %}active{% endif %}">
+                <i class="fas fa-map-marker-alt"></i> Cidades
+            </a>
 
-                    <a href="{% url 'dashboard_relatorios' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_relatorios' %}active{% endif %}">
-                        <i class="fas fa-chart-bar"></i> Relat&oacute;rios
-                    </a>
+            {% elif url_name == 'dashboard_parceiros_home' or url_name == 'dashboard_parceiros' or url_name == 'dashboard_cupons' or url_name == 'dashboard_cupons_resgates' or url_name == 'dashboard_cupom_detalhe' %}
+            <!-- M&oacute;dulo: Parceiros -->
+            <div class="sidebar-section-label">Parceiros</div>
+            <a href="{% url 'dashboard_parceiros_home' %}" class="nav-item {% if url_name == 'dashboard_parceiros_home' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="{% url 'dashboard_parceiros' %}" class="nav-item {% if url_name == 'dashboard_parceiros' %}active{% endif %}">
+                <i class="fas fa-handshake"></i> Parceiros
+            </a>
+            <a href="{% url 'dashboard_cupons' %}" class="nav-item {% if url_name == 'dashboard_cupons' or url_name == 'dashboard_cupom_detalhe' %}active{% endif %}">
+                <i class="fas fa-ticket-alt"></i> Cupons
+            </a>
+            <a href="{% url 'dashboard_cupons_resgates' %}" class="nav-item {% if url_name == 'dashboard_cupons_resgates' %}active{% endif %}">
+                <i class="fas fa-history"></i> Resgates
+            </a>
 
-                    <div class="sidebar-section-label">Opera&ccedil;&atilde;o</div>
+            {% elif url_name == 'dashboard_indicacoes_home' or url_name == 'dashboard_indicacoes' or url_name == 'dashboard_indicacoes_membros' or url_name == 'dashboard_indicacoes_visual' %}
+            <!-- M&oacute;dulo: Indica&ccedil;&otilde;es -->
+            <div class="sidebar-section-label">Indica&ccedil;&otilde;es</div>
+            <a href="{% url 'dashboard_indicacoes_home' %}" class="nav-item {% if url_name == 'dashboard_indicacoes_home' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="{% url 'dashboard_indicacoes' %}" class="nav-item {% if url_name == 'dashboard_indicacoes' %}active{% endif %}">
+                <i class="fas fa-user-plus"></i> Indica&ccedil;&otilde;es
+            </a>
+            <a href="{% url 'dashboard_indicacoes_membros' %}" class="nav-item {% if url_name == 'dashboard_indicacoes_membros' %}active{% endif %}">
+                <i class="fas fa-crown"></i> Embaixadores
+            </a>
+            <a href="{% url 'dashboard_indicacoes_visual' %}" class="nav-item {% if url_name == 'dashboard_indicacoes_visual' %}active{% endif %}">
+                <i class="fas fa-cog"></i> Configura&ccedil;&otilde;es
+            </a>
 
-                    <a href="{% url 'dashboard_giros' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_giros' %}active{% endif %}">
-                        <i class="fas fa-history"></i> Hist&oacute;rico
-                    </a>
-                    <a href="{% url 'dashboard_assets' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_assets' %}active{% endif %}">
-                        <i class="fas fa-image"></i> Visual
-                    </a>
-                    <a href="{% url 'dashboard_gamificacao' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'dashboard_gamificacao' %}active{% endif %}">
-                        <i class="fas fa-gamepad"></i> Gamifica&ccedil;&atilde;o
-                    </a>
+            {% elif url_name == 'dashboard_relatorios' or url_name == 'dashboard_relatorios_indicacoes' or url_name == 'dashboard_relatorios_parceiros' %}
+            <!-- M&oacute;dulo: Relat&oacute;rios -->
+            <div class="sidebar-section-label">Relat&oacute;rios</div>
+            <a href="{% url 'dashboard_relatorios' %}" class="nav-item {% if url_name == 'dashboard_relatorios' %}active{% endif %}">
+                <i class="fas fa-dice"></i> Roleta
+            </a>
+            <a href="{% url 'dashboard_relatorios_indicacoes' %}" class="nav-item {% if url_name == 'dashboard_relatorios_indicacoes' %}active{% endif %}">
+                <i class="fas fa-user-plus"></i> Indica&ccedil;&otilde;es
+            </a>
+            <a href="{% url 'dashboard_relatorios_parceiros' %}" class="nav-item {% if url_name == 'dashboard_relatorios_parceiros' %}active{% endif %}">
+                <i class="fas fa-handshake"></i> Parceiros
+            </a>
 
-                    <div class="sidebar-section-label">Suporte</div>
+            {% elif url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' %}
+            <!-- M&oacute;dulo: Opera&ccedil;&atilde;o -->
+            <div class="sidebar-section-label">Opera&ccedil;&atilde;o</div>
+            <a href="{% url 'dashboard_giros' %}" class="nav-item {% if url_name == 'dashboard_giros' %}active{% endif %}">
+                <i class="fas fa-history"></i> Hist&oacute;rico de Giros
+            </a>
+            <a href="{% url 'dashboard_assets' %}" class="nav-item {% if url_name == 'dashboard_assets' %}active{% endif %}">
+                <i class="fas fa-image"></i> Visual
+            </a>
+            <a href="{% url 'dashboard_gamificacao' %}" class="nav-item {% if url_name == 'dashboard_gamificacao' %}active{% endif %}">
+                <i class="fas fa-gamepad"></i> Gamifica&ccedil;&atilde;o
+            </a>
 
-                    <a href="{% url 'documentacao' %}"
-                        class="nav-item {% if request.resolver_match.url_name == 'documentacao' %}active{% endif %}">
-                        <i class="fas fa-book"></i> Documenta&ccedil;&atilde;o
-                    </a>
-                </nav>
-            </div>
+            {% elif url_name == 'documentacao' %}
+            <!-- M&oacute;dulo: Suporte -->
+            <div class="sidebar-section-label">Suporte</div>
+            <a href="{% url 'documentacao' %}" class="nav-item {% if url_name == 'documentacao' %}active{% endif %}">
+                <i class="fas fa-book"></i> Documenta&ccedil;&atilde;o
+            </a>
 
-            <div class="sidebar-footer">
-                <a href="{% url 'dashboard_config' %}"
-                    class="nav-item {% if request.resolver_match.url_name == 'dashboard_config' %}active{% endif %}">
-                    <i class="fas fa-cog"></i> Configura&ccedil;&otilde;es
-                </a>
-                <a href="{% url 'roleta_index' %}" class="nav-item" target="_blank">
-                    <i class="fas fa-external-link-alt"></i> Ver Roleta
-                </a>
-            </div>
+            {% elif url_name == 'dashboard_config' %}
+            <!-- Configura&ccedil;&otilde;es -->
+            <div class="sidebar-section-label">Sistema</div>
+            <a href="{% url 'dashboard_config' %}" class="nav-item active">
+                <i class="fas fa-cog"></i> Configura&ccedil;&otilde;es
+            </a>
+
+            {% else %}
+            <!-- Fallback: Roleta -->
+            <div class="sidebar-section-label">Roleta</div>
+            <a href="{% url 'dashboard_home' %}" class="nav-item">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            {% endif %}
+
+            {% endwith %}
         </aside>
 
         <main class="main-content">

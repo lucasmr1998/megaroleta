@@ -8,6 +8,8 @@ from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
 from django.http import HttpResponse
 from django.core.paginator import Paginator
 from roleta.models import PremioRoleta, ParticipanteRoleta, RouletteAsset, RoletaConfig, MembroClube, NivelClube, RegraPontuacao, ExtratoPontuacao, Cidade
+from indicacoes.models import Indicacao
+from parceiros.models import Parceiro, CupomDesconto, ResgateCupom
 import csv
 import json
 from datetime import datetime, timedelta
@@ -689,7 +691,7 @@ def dashboard_relatorios(request):
     horas_labels = [f"{h}h" for h in range(24)]
     horas_data = [horas_dict.get(h, 0) for h in range(24)]
 
-    # ── 8. Ranking de prêmios (sorteados + estoque) ─────────────────────
+    # ── Ranking de prêmios (sorteados + estoque) ─────────────────────
     premios_sorteados = (
         giros_qs
         .exclude(premio__iexact=PREMIO_SEM_SORTE)
@@ -712,15 +714,12 @@ def dashboard_relatorios(request):
 
     context = {
         'periodo': periodo,
-        # Cidade
         'cidades_stats': cidades_stats,
         'chart_cidades_labels': json.dumps(cidades_labels),
         'chart_cidades_membros': json.dumps(cidades_membros),
         'chart_cidades_giros': json.dumps(cidades_giros),
-        # Prêmios
         'chart_premios_labels': json.dumps(premios_labels),
         'chart_premios_data': json.dumps(premios_data),
-        # Funil
         'funil_leads': funil_leads,
         'funil_validados': funil_validados,
         'funil_jogadores': funil_jogadores,
@@ -728,20 +727,182 @@ def dashboard_relatorios(request):
         'taxa_validacao': taxa_validacao,
         'taxa_jogo': taxa_jogo,
         'taxa_premio': taxa_premio,
-        # Evolução temporal
         'evo_titulo': evo_titulo,
         'chart_evo_labels': json.dumps(evo_labels),
         'chart_evo_cad': json.dumps(evo_cad_data),
         'chart_evo_gir': json.dumps(evo_gir_data),
-        # Top jogadores
         'top_jogadores': top_jogadores,
-        # Prêmios por cidade
         'cidade_premios_map': dict(cidade_premios_map),
-        # Horários
         'chart_horas_labels': json.dumps(horas_labels),
         'chart_horas_data': json.dumps(horas_data),
-        # Ranking prêmios
         'premios_ranking': premios_ranking,
         'max_sorteados': max_sorteados,
     }
     return render(request, 'roleta/dashboard/relatorios.html', context)
+
+
+def _get_periodo_filtro(request):
+    """Helper para filtro de período reutilizável nos relatórios."""
+    hoje = datetime.now().date()
+    periodo = request.GET.get('periodo', '30')
+    if periodo == '7':
+        data_inicio = hoje - timedelta(days=7)
+    elif periodo == '15':
+        data_inicio = hoje - timedelta(days=15)
+    elif periodo == '90':
+        data_inicio = hoje - timedelta(days=90)
+    elif periodo == 'total':
+        data_inicio = None
+    else:
+        data_inicio = hoje - timedelta(days=30)
+    return periodo, data_inicio
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def dashboard_relatorios_indicacoes(request):
+    """Relatórios de indicações."""
+    periodo, data_inicio = _get_periodo_filtro(request)
+
+    hoje = datetime.now().date()
+    usar_diario = periodo in ('7', '15', '30')
+    evo_inicio = data_inicio if data_inicio else hoje - timedelta(days=90)
+
+    indicacoes_qs = Indicacao.objects.all()
+    if data_inicio:
+        indicacoes_qs = indicacoes_qs.filter(data_indicacao__date__gte=data_inicio)
+
+    total_indicacoes = indicacoes_qs.count()
+    indicacoes_pendentes = indicacoes_qs.filter(status='pendente').count()
+    indicacoes_convertidas = indicacoes_qs.filter(status='convertido').count()
+    indicacoes_canceladas = indicacoes_qs.filter(status='cancelado').count()
+    taxa_conversao_ind = round((indicacoes_convertidas / total_indicacoes * 100), 1) if total_indicacoes > 0 else 0
+
+    # Top 10 embaixadores
+    top_embaixadores = (
+        MembroClube.objects
+        .annotate(
+            total_indicacoes=Count('indicacoes_feitas', filter=Q(indicacoes_feitas__data_indicacao__date__gte=data_inicio) if data_inicio else Q()),
+            ind_convertidas=Count('indicacoes_feitas', filter=Q(indicacoes_feitas__status='convertido') & (Q(indicacoes_feitas__data_indicacao__date__gte=data_inicio) if data_inicio else Q())),
+        )
+        .filter(total_indicacoes__gt=0)
+        .order_by('-total_indicacoes')[:10]
+    )
+
+    # Indicações por cidade
+    indicacoes_por_cidade = (
+        indicacoes_qs
+        .exclude(cidade_indicado='').exclude(cidade_indicado__isnull=True)
+        .values('cidade_indicado')
+        .annotate(total=Count('id'), convertidas=Count('id', filter=Q(status='convertido')))
+        .order_by('-total')[:10]
+    )
+
+    # Evolução indicações
+    if usar_diario:
+        evo_ind = (
+            indicacoes_qs
+            .annotate(dia=TruncDate('data_indicacao'))
+            .values('dia')
+            .annotate(total=Count('id'))
+            .order_by('dia')
+        )
+        evo_ind_dict = {}
+        for r in evo_ind:
+            if r['dia'] and hasattr(r['dia'], 'strftime'):
+                evo_ind_dict[r['dia'].strftime('%d/%m')] = r['total']
+    else:
+        evo_ind = (
+            indicacoes_qs
+            .annotate(semana=TruncWeek('data_indicacao'))
+            .values('semana')
+            .annotate(total=Count('id'))
+            .order_by('semana')
+        )
+        evo_ind_dict = {}
+        for r in evo_ind:
+            if r['semana'] and hasattr(r['semana'], 'strftime'):
+                evo_ind_dict[r['semana'].strftime('%d/%m')] = r['total']
+
+    # Evolução labels
+    evo_labels = []
+    if usar_diario:
+        num_dias = int(periodo)
+        for i in range(num_dias):
+            d = evo_inicio + timedelta(days=i)
+            evo_labels.append(d.strftime('%d/%m'))
+    else:
+        num_semanas = 12 if periodo == 'total' else (int(periodo) // 7)
+        for i in range(num_semanas):
+            d = evo_inicio + timedelta(weeks=i)
+            d = d - timedelta(days=d.weekday())
+            evo_labels.append(d.strftime('%d/%m'))
+
+    evo_ind_data = [evo_ind_dict.get(label, 0) for label in evo_labels]
+
+    context = {
+        'periodo': periodo,
+        'total_indicacoes': total_indicacoes,
+        'indicacoes_pendentes': indicacoes_pendentes,
+        'indicacoes_convertidas': indicacoes_convertidas,
+        'indicacoes_canceladas': indicacoes_canceladas,
+        'taxa_conversao_ind': taxa_conversao_ind,
+        'top_embaixadores': top_embaixadores,
+        'indicacoes_por_cidade': indicacoes_por_cidade,
+        'chart_evo_labels': json.dumps(evo_labels),
+        'chart_evo_ind': json.dumps(evo_ind_data),
+    }
+    return render(request, 'roleta/dashboard/relatorios_indicacoes.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def dashboard_relatorios_parceiros(request):
+    """Relatórios de parceiros e cupons."""
+    periodo, data_inicio = _get_periodo_filtro(request)
+
+    resgates_qs = ResgateCupom.objects.all()
+    if data_inicio:
+        resgates_qs = resgates_qs.filter(data_resgate__date__gte=data_inicio)
+
+    total_resgates_cupom = resgates_qs.count()
+    resgates_utilizados = resgates_qs.filter(status='utilizado').count()
+    total_pontos_cupom = resgates_qs.aggregate(t=Sum('pontos_gastos'))['t'] or 0
+    total_valor_compras = resgates_qs.filter(valor_compra__isnull=False).aggregate(t=Sum('valor_compra'))['t'] or 0
+
+    # Cupons mais resgatados
+    cupons_top = (
+        resgates_qs
+        .values('cupom__titulo', 'cupom__parceiro__nome')
+        .annotate(total=Count('id'), utilizados=Count('id', filter=Q(status='utilizado')))
+        .order_by('-total')[:10]
+    )
+
+    # Resgates por parceiro
+    resgates_por_parceiro = (
+        resgates_qs
+        .values('cupom__parceiro__nome')
+        .annotate(
+            total=Count('id'),
+            utilizados=Count('id', filter=Q(status='utilizado')),
+            pontos=Sum('pontos_gastos'),
+            valor=Sum('valor_compra'),
+        )
+        .order_by('-total')
+    )
+
+    parceiros_labels = [r['cupom__parceiro__nome'] for r in resgates_por_parceiro]
+    parceiros_resgates_data = [r['total'] for r in resgates_por_parceiro]
+
+    context = {
+        'periodo': periodo,
+        'total_resgates_cupom': total_resgates_cupom,
+        'resgates_utilizados': resgates_utilizados,
+        'total_pontos_cupom': total_pontos_cupom,
+        'total_valor_compras': total_valor_compras,
+        'cupons_top': cupons_top,
+        'resgates_por_parceiro': resgates_por_parceiro,
+        'chart_parceiros_labels': json.dumps(parceiros_labels),
+        'chart_parceiros_data': json.dumps(parceiros_resgates_data),
+    }
+    return render(request, 'roleta/dashboard/relatorios_parceiros.html', context)

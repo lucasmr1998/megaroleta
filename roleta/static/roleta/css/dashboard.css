@@ -40,6 +40,7 @@ body {
     background-color: var(--bg-page);
     color: var(--text-main);
     display: flex;
+    flex-direction: column;
     height: 100vh;
     overflow: hidden;
 }
@@ -50,13 +51,100 @@ a {
 }
 
 /* ============================================
+   Top Bar: M&oacute;dulos
+   ============================================ */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    height: 52px;
+    background: var(--bg-white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    flex-shrink: 0;
+    gap: 8px;
+    z-index: 10;
+    position: relative;
+}
+
+.topbar-brand {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-right: 24px;
+    letter-spacing: -0.02em;
+}
+
+.topbar-modules {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.topbar-module {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.topbar-module i {
+    font-size: 13px;
+}
+
+.topbar-module:hover {
+    background: var(--border-light);
+    color: var(--text-secondary);
+}
+
+.topbar-module.active {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.topbar-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+    font-size: 14px;
+}
+
+.topbar-action:hover {
+    background: var(--border-light);
+    color: var(--text-secondary);
+}
+
+/* ============================================
    Layout: Sidebar + Main
    ============================================ */
 
 .app-container {
     display: flex;
     width: 100%;
-    height: 100vh;
+    flex: 1;
+    overflow: hidden;
 }
 
 /* ---- Sidebar ---- */
@@ -67,22 +155,17 @@ a {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    height: 100vh;
     overflow-y: auto;
+    padding: 8px;
 }
 
 .sidebar-brand {
-    padding: 20px 20px 12px;
-    font-size: 12px;
-    font-weight: 800;
-    color: var(--primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    display: none;
 }
 
 .sidebar-nav {
     flex: 1;
-    padding: 0 8px;
+    padding: 0;
 }
 
 .nav-item {
@@ -123,11 +206,15 @@ a {
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding: 20px 14px 8px 17px;
+    padding: 12px 14px 8px 17px;
+}
+
+.sidebar-section-label:first-child {
+    padding-top: 8px;
 }
 
 .sidebar-footer {
-    padding: 8px;
+    padding: 8px 0 0;
     border-top: 1px solid var(--border);
     margin-top: auto;
 }
