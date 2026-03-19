@@ -409,13 +409,18 @@ def api_chat(request):
         })
 
     elif modo == 'reuniao_agente':
-        # Carregar historico do banco
+        # Carregar historico do banco — SO mensagens do CEO + respostas DESTE agente
+        # Evita que agente veja respostas de outros e faca roleplay
         historico_reuniao = []
         if reuniao_id:
-            msgs_db = MensagemReuniao.objects.filter(reuniao_id=reuniao_id).order_by('-data_criacao')[:20]
+            msgs_db = MensagemReuniao.objects.filter(
+                reuniao_id=reuniao_id
+            ).filter(
+                Q(tipo='ceo') | Q(agente_id=agente_id)
+            ).order_by('-data_criacao')[:10]
             for m in reversed(msgs_db):
                 role = 'user' if m.tipo == 'ceo' else 'assistant'
-                historico_reuniao.append({'role': role, 'content': f'{m.agente_nome or "CEO"}: {m.conteudo}'})
+                historico_reuniao.append({'role': role, 'content': m.conteudo})
 
         resposta = chat_agente(agente_id, mensagem, historico_reuniao)
         resposta_limpa, acoes = processar_acoes(resposta, agente_id)

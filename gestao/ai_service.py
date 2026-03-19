@@ -205,11 +205,24 @@ def chat_agente(agente_id, mensagem, historico=None):
 
     # Instrucoes adicionais
     system_message += "\n\n--- INSTRUCOES ADICIONAIS ---\n"
-    system_message += "- Sempre responda em portugues brasileiro.\n"
-    system_message += "- Use os dados reais do sistema quando disponíveis (métricas, projetos, tarefas).\n"
-    system_message += "- Referencie entregas e sessões anteriores quando relevante.\n"
-    system_message += "- Siga o template de readout obrigatório do seu papel.\n"
-    system_message += "- Se fizer referência a tarefas do projeto, mencione o status atual.\n"
+    system_message += """- Sempre responda em portugues brasileiro.
+- Use os dados reais do sistema quando disponíveis.
+
+REGRA CRITICA DE COMUNICACAO:
+- Voce esta numa CONVERSA, nao numa apresentacao. Responda como um colega de trabalho.
+- Perguntas casuais ("como esta?", "e ai?", "o que acha?", "review") = resposta CURTA (3-8 frases). SEM template, SEM readout, SEM headings ##.
+- Perguntas rapidas ("quantos parceiros?", "qual o status?") = responda DIRETO em 1-3 frases.
+- Pedido de acao ("crie tarefa", "salve isso") = execute e confirme em 1 frase.
+- SOMENTE use readout completo com template quando o CEO pedir EXPLICITAMENTE ("me da um readout", "faz uma analise completa", "preciso de um plano detalhado").
+- Na duvida, seja BREVE. O CEO pode pedir para aprofundar.
+- Nao repita informacoes que o CEO ja sabe. Seja direto.
+
+REGRA CRITICA DE IDENTIDADE:
+- Voce e UM agente. Fale SOMENTE sobre SUA area.
+- NUNCA fale pelos outros agentes. NUNCA inclua secoes como "### CTO:", "### CMO:" na sua resposta.
+- Se o CEO perguntar algo que nao e da sua area, diga "isso e com o [agente X], posso falar sobre [sua area]".
+- Cada agente fala por si. O CEO usa os botoes para pedir para outros agentes responderem.
+"""
 
     # Acoes disponiveis
     system_message += "\n\n--- ACOES QUE VOCE PODE EXECUTAR ---\n"
@@ -288,59 +301,54 @@ IMPORTANTE:
 
 def moderador_decidir(mensagem, agentes_disponiveis, historico_reuniao=None):
     """
-    Moderador analisa a mensagem do CEO e decide quais agentes devem responder.
-    Retorna lista de agente_ids.
+    Moderador DETERMINISTICO — sem IA, sem erro, sem custo.
+    Analisa palavras-chave na mensagem e retorna lista com 1 agente.
     """
-    client = get_client()
-    if not client:
-        return agentes_disponiveis  # fallback: todos
+    msg = mensagem.lower().strip()
 
-    agentes_desc = "\n".join([
-        f"- {a['id']}: {a['nome']} — {a['descricao']}"
-        for a in AGENTES_INFO if a['id'] in agentes_disponiveis
-    ])
+    # Regra 1: CEO mencionou agente pelo nome → só esse agente
+    mencoes_diretas = {
+        'cto': 'cto',
+        'cpo': 'cpo',
+        'cfo': 'cfo',
+        'cmo': 'cmo',
+        'pmm': 'pmm',
+        'comercial': 'b2b',
+        'b2b': 'b2b',
+        'customer success': 'cs',
+        'customer': 'cs',
+        'success': 'cs',
+    }
+    for termo, agente_id in mencoes_diretas.items():
+        if termo in msg and agente_id in agentes_disponiveis:
+            return [agente_id]
 
-    system_prompt = f"""Voce e o moderador de uma reuniao de agentes do Clube Megalink.
-Sua unica funcao e analisar a mensagem do CEO e decidir QUAIS agentes devem responder.
+    # Regra 2: Palavras-chave por tema → agente dono do tema
+    temas = [
+        (['go-to-market', 'gtm', 'posicionamento', 'messaging', 'battle card', 'one-pager'], 'pmm'),
+        (['marketing', 'campanha', 'copy', 'growth', 'instagram', 'post'], 'cmo'),
+        (['parceiro', 'prospeccao', 'abordagem', 'script', 'objecao'], 'b2b'),
+        (['tecnologia', 'codigo', 'bug', 'performance', 'sistema', 'deploy', 'servidor'], 'cto'),
+        (['financeiro', 'roi', 'custo', 'preco', 'investimento', 'payback', 'arpu', 'churn'], 'cfo'),
+        (['onboarding', 'engajamento', 'reativacao', 'whatsapp', 'mensagem'], 'cs'),
+        (['feature', 'roadmap', 'produto', 'priorizacao', 'backlog', 'spec'], 'cpo'),
+    ]
+    for palavras, agente_id in temas:
+        for palavra in palavras:
+            if palavra in msg and agente_id in agentes_disponiveis:
+                return [agente_id]
 
-Agentes disponiveis na reuniao:
-{agentes_desc}
+    # Regra 3: CEO quer ouvir todos
+    todos_keywords = ['todos', 'todo mundo', 'cada um', 'pessoal', 'equipe toda']
+    for kw in todos_keywords:
+        if kw in msg:
+            return agentes_disponiveis[:3]  # maximo 3
 
-Regras:
-- Se o CEO fala sobre algo especifico de um agente, so esse agente responde
-- Se e uma pergunta geral ou estrategica, 2-3 agentes mais relevantes respondem
-- Se o CEO pede opiniao de todos, todos respondem
-- Se o CEO menciona um agente pelo nome, inclua ele
-- Sempre inclua pelo menos 1 agente
-- NUNCA responda a pergunta do CEO. Sua funcao e APENAS decidir quem responde.
+    # Regra 4: Fallback → CPO (dono do roadmap/projeto)
+    if 'cpo' in agentes_disponiveis:
+        return ['cpo']
 
-Responda APENAS com os IDs dos agentes separados por virgula. Nada mais.
-Exemplo: cto,cpo
-Exemplo: b2b
-Exemplo: cmo,pmm,b2b"""
-
-    messages = [{"role": "system", "content": system_prompt}]
-
-    # Adicionar contexto da reuniao
-    if historico_reuniao:
-        for msg in historico_reuniao[-6:]:  # ultimas 6 mensagens de contexto
-            messages.append(msg)
-
-    messages.append({"role": "user", "content": mensagem})
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            max_tokens=50,
-            temperature=0.3,
-        )
-        ids_texto = response.choices[0].message.content.strip().lower()
-        # Parse: "cto,cpo" -> ["cto", "cpo"]
-        ids = [x.strip() for x in ids_texto.split(',') if x.strip() in agentes_disponiveis]
-        return ids if ids else agentes_disponiveis[:1]  # fallback: primeiro agente
-    except Exception:
-        return agentes_disponiveis  # fallback: todos
+    return agentes_disponiveis[:1]
 
 
 def reuniao_agentes(mensagem, agentes_ids=None):
