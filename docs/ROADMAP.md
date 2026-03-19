@@ -65,6 +65,21 @@
 - [x] Base de conhecimento (brandbook, metas, financeiro, concorrentes, FAQ)
 - [x] Sistema de sessoes e entregas
 
+### Fase 9 — Gestao de Projetos e Sala de Agentes (marco/2026)
+- [x] App `gestao` com models Projeto, Etapa, Tarefa, Nota, Reuniao, MensagemReuniao
+- [x] Dashboard CEO com KPIs do sistema (membros, giros, parceiros, cupons, indicacoes)
+- [x] Kanban board com 4 colunas (pendente, em andamento, concluida, bloqueada)
+- [x] Projeto "Lancamento Floriano" populado com 25 tarefas em 4 etapas
+- [x] Sala de agentes com chat individual integrado via OpenAI API (gpt-4o-mini)
+- [x] Reunioes com nome, descricao e participantes selecionaveis
+- [x] Moderador inteligente que direciona mensagens para agentes relevantes
+- [x] Agentes respondem sequencialmente (um por vez, estilo conversa)
+- [x] Historico de reunioes salvo no banco (persistente)
+- [x] Acoes dos agentes: salvar entregas, sessoes, criar/atualizar tarefas, consultar outros agentes
+- [x] Visualizacao de entregas e sessoes com markdown renderizado
+- [x] Editor de entregas com preview em tempo real
+- [x] Botao "Salvar Sessao" no chat individual
+
 ---
 
 ## Plano de Lancamento — Floriano (EM ANDAMENTO)

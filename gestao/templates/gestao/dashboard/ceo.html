@@ -1,0 +1,192 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Dashboard CEO{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Dashboard do CEO</h1>
+    <p class="page-subtitle">Vis&atilde;o executiva — m&eacute;tricas do sistema + projetos + tarefas.</p>
+</div>
+
+<!-- KPIs do Sistema -->
+{% if sistema %}
+<div style="margin-bottom:24px;">
+    <h3 style="font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.04em;">
+        <i class="fas fa-chart-line" style="margin-right:6px;"></i>M&eacute;tricas do Clube
+    </h3>
+    <div class="stats-grid" style="grid-template-columns:repeat(5, 1fr);">
+        <div class="stat-card">
+            <div class="stat-label">Membros</div>
+            <div class="stat-value" style="color:var(--primary);">{{ sistema.membros }}</div>
+            <div class="stat-sub">{{ sistema.membros_validados }} validados</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Giros</div>
+            <div class="stat-value">{{ sistema.giros }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Parceiros</div>
+            <div class="stat-value" style="color:var(--info);">{{ sistema.parceiros }}</div>
+            <div class="stat-sub">{{ sistema.cupons }} cupons ativos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Resgates</div>
+            <div class="stat-value" style="color:var(--success);">{{ sistema.resgates }}</div>
+            <div class="stat-sub">{{ sistema.resgates_utilizados }} utilizados</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Indica&ccedil;&otilde;es</div>
+            <div class="stat-value" style="color:var(--warning);">{{ sistema.indicacoes }}</div>
+            <div class="stat-sub">{{ sistema.indicacoes_convertidas }} convertidas</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- KPIs Tarefas -->
+<h3 style="font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.04em;">
+    <i class="fas fa-tasks" style="margin-right:6px;"></i>Tarefas
+</h3>
+<div class="stats-grid" style="grid-template-columns:repeat(5, 1fr); margin-bottom:24px;">
+    <div class="stat-card">
+        <div class="stat-label">Total Tarefas</div>
+        <div class="stat-value">{{ total_tarefas }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Pendentes</div>
+        <div class="stat-value" style="color:var(--text-muted);">{{ tarefas_pendentes }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Em Andamento</div>
+        <div class="stat-value" style="color:var(--primary);">{{ tarefas_andamento }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Conclu&iacute;das</div>
+        <div class="stat-value" style="color:var(--success);">{{ tarefas_concluidas }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Bloqueadas</div>
+        <div class="stat-value" style="color:var(--danger);">{{ tarefas_bloqueadas }}</div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">
+    <!-- Projetos Ativos -->
+    <div class="card" style="padding:20px;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            Projetos Ativos
+            <a href="{% url 'gestao_projetos' %}" style="font-size:13px; color:var(--primary); font-weight:600;">Ver todos &rarr;</a>
+        </div>
+        {% for p in projetos %}
+        <div style="padding:12px 0; {% if not forloop.last %}border-bottom:1px solid var(--border-light);{% endif %}">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div>
+                    <strong style="font-size:14px;">{{ p.nome }}</strong>
+                    {% if p.responsavel %}<br><small class="text-muted">{{ p.responsavel }}</small>{% endif %}
+                </div>
+                <a href="{% url 'kanban' p.id %}" class="btn btn-primary" style="padding:4px 12px; font-size:12px;">Kanban</a>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="flex:1; height:6px; background:var(--border-light); border-radius:3px; overflow:hidden;">
+                    <div style="height:100%; width:{{ p.progresso }}%; background:var(--success); border-radius:3px;"></div>
+                </div>
+                <span style="font-size:12px; font-weight:700; color:var(--text-muted);">{{ p.progresso }}%</span>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-center text-muted" style="padding:20px;">Nenhum projeto ativo.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Tarefas por Responsavel -->
+    <div class="card" style="padding:20px;">
+        <div class="card-title">Carga por Respons&aacute;vel</div>
+        {% for r in por_responsavel %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; {% if not forloop.last %}border-bottom:1px solid var(--border-light);{% endif %}">
+            <div>
+                <strong style="font-size:14px;">{{ r.responsavel }}</strong>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                {% if r.criticas > 0 %}
+                <span class="badge badge-danger">{{ r.criticas }} cr&iacute;tica{{ r.criticas|pluralize:"s" }}</span>
+                {% endif %}
+                <span style="font-size:13px; font-weight:700; color:var(--text-main);">{{ r.total }} tarefa{{ r.total|pluralize:"s" }}</span>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-center text-muted" style="padding:20px;">Nenhuma tarefa atribu&iacute;da.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Tarefas Urgentes -->
+{% if urgentes %}
+<div class="card" style="padding:20px; margin-bottom:24px;">
+    <div class="card-title"><i class="fas fa-exclamation-triangle" style="color:var(--danger); margin-right:6px;"></i>Tarefas Urgentes</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tarefa</th>
+                <th>Projeto</th>
+                <th>Respons&aacute;vel</th>
+                <th style="text-align:center;">Prioridade</th>
+                <th style="text-align:center;">Status</th>
+                <th>Prazo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in urgentes %}
+            <tr>
+                <td><strong>{{ t.titulo }}</strong></td>
+                <td>{{ t.projeto.nome }}</td>
+                <td>{{ t.responsavel|default:"-" }}</td>
+                <td style="text-align:center;">
+                    {% if t.prioridade == 'critica' %}<span class="badge badge-danger">Cr&iacute;tica</span>
+                    {% else %}<span class="badge badge-warning">Alta</span>{% endif %}
+                </td>
+                <td style="text-align:center;">
+                    {% if t.status == 'pendente' %}<span class="badge" style="background:var(--border-light); color:var(--text-muted);">Pendente</span>
+                    {% elif t.status == 'em_andamento' %}<span class="badge badge-info">Em Andamento</span>
+                    {% elif t.status == 'bloqueada' %}<span class="badge badge-danger">Bloqueada</span>{% endif %}
+                </td>
+                <td>{{ t.data_limite|date:"d/m/Y"|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Proximas Tarefas por Prazo -->
+{% if proximas %}
+<div class="card" style="padding:20px;">
+    <div class="card-title"><i class="fas fa-calendar" style="color:var(--primary); margin-right:6px;"></i>Pr&oacute;ximos Prazos</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tarefa</th>
+                <th>Projeto</th>
+                <th>Respons&aacute;vel</th>
+                <th>Prazo</th>
+                <th style="text-align:center;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in proximas %}
+            <tr>
+                <td><strong>{{ t.titulo }}</strong></td>
+                <td>{{ t.projeto.nome }}</td>
+                <td>{{ t.responsavel|default:"-" }}</td>
+                <td>{{ t.data_limite|date:"d/m/Y" }}</td>
+                <td style="text-align:center;">
+                    {% if t.status == 'pendente' %}<span class="badge" style="background:var(--border-light); color:var(--text-muted);">Pendente</span>
+                    {% else %}<span class="badge badge-info">Em Andamento</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <span class="badge badge-info" style="margin-bottom:8px;">{{ tipo }}</span>
+        <h1 class="page-title">{{ titulo }}</h1>
+    </div>
+    <div style="display:flex; gap:8px;">
+        {% if editar_url %}
+        <a href="{% url 'gestao_entrega_editar' agente arquivo %}" class="btn btn-primary"><i class="fas fa-edit"></i> Editar</a>
+        {% endif %}
+        <a href="{% url voltar_url %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+    </div>
+</div>
+
+<div class="card" style="padding:32px;">
+    <div class="markdown-body" style="
+        font-size:14px;
+        line-height:1.7;
+        color:var(--text-main);
+    ">
+        {{ html|safe }}
+    </div>
+</div>
+
+<style>
+.markdown-body h1 { font-size:22px; font-weight:800; margin:24px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.markdown-body h2 { font-size:18px; font-weight:700; margin:20px 0 10px; color:var(--text-main); }
+.markdown-body h3 { font-size:15px; font-weight:700; margin:16px 0 8px; color:var(--text-secondary); }
+.markdown-body h4 { font-size:14px; font-weight:700; margin:12px 0 6px; }
+.markdown-body p { margin:8px 0; }
+.markdown-body ul, .markdown-body ol { padding-left:24px; margin:8px 0; }
+.markdown-body li { margin:4px 0; }
+.markdown-body strong { color:var(--text-main); }
+.markdown-body code { background:var(--border-light); padding:2px 6px; border-radius:4px; font-size:13px; color:var(--primary); }
+.markdown-body pre { background:#1e293b; color:#e2e8f0; padding:16px; border-radius:10px; overflow-x:auto; margin:12px 0; }
+.markdown-body pre code { background:transparent; color:inherit; padding:0; }
+.markdown-body blockquote { border-left:3px solid var(--primary); padding:8px 16px; margin:12px 0; background:var(--primary-light); border-radius:0 8px 8px 0; color:var(--text-secondary); }
+.markdown-body table { width:100%; border-collapse:collapse; margin:12px 0; }
+.markdown-body th { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; padding:10px 12px; border-bottom:2px solid var(--border); text-align:left; }
+.markdown-body td { padding:10px 12px; border-bottom:1px solid var(--border-light); font-size:13px; }
+.markdown-body tr:hover { background:var(--bg-page); }
+.markdown-body hr { border:none; border-top:1px solid var(--border); margin:20px 0; }
+.markdown-body details { margin:12px 0; }
+.markdown-body summary { cursor:pointer; font-weight:600; color:var(--primary); }
+</style>
+{% endblock %}

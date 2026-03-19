@@ -1,0 +1,45 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Sess&otilde;es com Agentes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Sess&otilde;es com Agentes</h1>
+    <p class="page-subtitle">Hist&oacute;rico de conversas com os agentes de IA.</p>
+</div>
+
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Sess&atilde;o</th>
+                <th>T&iacute;tulo</th>
+                <th style="text-align:center;">A&ccedil;&otilde;es</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sessoes %}
+            <tr>
+                <td>
+                    <strong style="font-size:13px;">{{ s.nome|truncatewords:1 }}</strong>
+                </td>
+                <td>
+                    <strong>{{ s.nome }}</strong>
+                </td>
+                <td>{{ s.titulo }}</td>
+                <td style="text-align:center;">
+                    <a href="{% url 'gestao_sessao_detalhe' s.arquivo %}" class="btn btn-primary" style="padding:6px 14px; font-size:12px;">
+                        <i class="fas fa-eye"></i> Ver
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center text-muted" style="padding:40px;">Nenhuma sess&atilde;o registrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

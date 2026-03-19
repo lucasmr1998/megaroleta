@@ -42,6 +42,10 @@
                 class="topbar-module {% if url_name == 'dashboard_relatorios' or url_name == 'dashboard_relatorios_indicacoes' or url_name == 'dashboard_relatorios_parceiros' %}active{% endif %}">
                 <i class="fas fa-chart-bar"></i> Relat&oacute;rios
             </a>
+            <a href="{% url 'dashboard_ceo' %}"
+                class="topbar-module {% if url_name == 'dashboard_ceo' or url_name == 'gestao_projetos' or url_name == 'kanban' or url_name == 'gestao_sessoes' or url_name == 'gestao_sessao_detalhe' or url_name == 'gestao_entregas' or url_name == 'gestao_entrega_detalhe' or url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' %}active{% endif %}">
+                <i class="fas fa-tasks"></i> Gest&atilde;o
+            </a>
             {% endwith %}
         </nav>
         <div class="topbar-actions">
@@ -134,6 +138,25 @@
             </a>
             <a href="{% url 'dashboard_relatorios_parceiros' %}" class="nav-item {% if url_name == 'dashboard_relatorios_parceiros' %}active{% endif %}">
                 <i class="fas fa-handshake"></i> Parceiros
+            </a>
+
+            {% elif url_name == 'dashboard_ceo' or url_name == 'gestao_projetos' or url_name == 'kanban' or url_name == 'gestao_sessoes' or url_name == 'gestao_sessao_detalhe' or url_name == 'gestao_entregas' or url_name == 'gestao_entrega_detalhe' or url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' %}
+            <!-- M&oacute;dulo: Gest&atilde;o -->
+            <div class="sidebar-section-label">Gest&atilde;o</div>
+            <a href="{% url 'dashboard_ceo' %}" class="nav-item {% if url_name == 'dashboard_ceo' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Dashboard CEO
+            </a>
+            <a href="{% url 'gestao_projetos' %}" class="nav-item {% if url_name == 'gestao_projetos' or url_name == 'kanban' %}active{% endif %}">
+                <i class="fas fa-columns"></i> Projetos
+            </a>
+            <a href="{% url 'sala_agentes' %}" class="nav-item {% if url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' %}active{% endif %}">
+                <i class="fas fa-robot"></i> Sala de Agentes
+            </a>
+            <a href="{% url 'gestao_entregas' %}" class="nav-item {% if url_name == 'gestao_entregas' or url_name == 'gestao_entrega_detalhe' %}active{% endif %}">
+                <i class="fas fa-file-alt"></i> Entregas
+            </a>
+            <a href="{% url 'gestao_sessoes' %}" class="nav-item {% if url_name == 'gestao_sessoes' or url_name == 'gestao_sessao_detalhe' %}active{% endif %}">
+                <i class="fas fa-comments"></i> Sess&otilde;es
             </a>
 
             {% elif url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' %}

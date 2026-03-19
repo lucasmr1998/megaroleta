@@ -333,6 +333,19 @@ Acessivel via `/roleta/dashboard/` — requer login de staff Django.
 - **Indicacao** — membro_indicador FK, nome/telefone/cpf/cidade indicado, status, pontos_creditados, datas, observacoes. unique_together: [indicador, telefone]
 - **IndicacaoConfig** — titulo, subtitulo, textos, cores, logo, imagem_fundo, campos visiveis (singleton)
 
+### App `carteirinha`
+- **ModeloCarteirinha** — nome, tipo_fundo (cor/imagem), cores (fundo, texto, destaque), logo, campos visiveis (9 toggles), texto_marca, texto_rodape
+- **RegraAtribuicao** — modelo FK, tipo (nivel/pontuacao_minima/cidade/todos/manual), prioridade
+- **CarteirinhaMembro** — membro FK, modelo FK, foto, data_emissao, data_validade
+
+### App `gestao`
+- **Projeto** — nome, descricao, responsavel, datas, progresso calculado
+- **Etapa** — projeto FK, nome, ordem, datas
+- **Tarefa** — projeto FK, etapa FK, titulo, responsavel, status (pendente/em_andamento/concluida/bloqueada), prioridade (critica/alta/media/baixa), data_limite
+- **Nota** — tarefa FK, autor, texto
+- **Reuniao** — nome, descricao, agentes (comma-separated IDs), ativa
+- **MensagemReuniao** — reuniao FK, tipo (ceo/agente/moderador), agente_id, agente_nome, conteudo
+
 ---
 
 ## 15. Configuracoes Gerais
@@ -354,6 +367,7 @@ Acessivel via `/roleta/dashboard/` — requer login de staff Django.
 | n8n – consulta cliente | Webhook POST | Dados do cliente Hubsoft |
 | n8n – envio OTP | Webhook POST | Codigo OTP via WhatsApp |
 | Hubsoft PostgreSQL | Leitura direta | Cidade, recorrencia, adiantado, app, clientes por cidade |
+| OpenAI API | REST API | Sala de agentes IA (gpt-4o-mini) |
 
 ---
 
@@ -411,7 +425,38 @@ megaroleta/
 │   └── templates/indicacoes/
 │       ├── dashboard/             # Admin: home, indicacoes, membros, visual
 │       └── indicar.html           # Pagina publica de indicacao
+├── carteirinha/
+│   ├── models.py                  # ModeloCarteirinha, RegraAtribuicao, CarteirinhaMembro
+│   ├── views.py                   # Admin: modelos, regras, preview + membro
+│   ├── services.py                # CarteirinhaService
+│   └── templates/carteirinha/
+│       ├── dashboard/             # Admin: home, modelos, criar, editar, regras, preview
+│       └── partials/cartao.html   # Template reutilizavel do cartao
+├── gestao/
+│   ├── models.py                  # Projeto, Etapa, Tarefa, Nota, Reuniao, MensagemReuniao
+│   ├── views.py                   # Dashboard CEO, kanban, sala agentes, entregas, sessoes
+│   ├── ai_service.py              # Integracao OpenAI, prompts, moderador
+│   ├── agent_actions.py           # Acoes: salvar entrega/sessao, criar/atualizar tarefa, consultar agente
+│   └── templates/gestao/dashboard/
+│       ├── ceo.html               # Dashboard CEO com KPIs
+│       ├── kanban.html            # Kanban board
+│       ├── sala.html              # Lobby da sala de agentes
+│       ├── sala_chat.html         # Chat individual com agente
+│       ├── sala_reuniao.html      # Reuniao com moderador
+│       ├── sala_reuniao_criar.html # Criar reuniao
+│       ├── entregas.html          # Lista de entregas
+│       ├── sessoes.html           # Lista de sessoes
+│       ├── documento.html         # Visualizar markdown renderizado
+│       └── entrega_editar.html    # Editor markdown com preview
+├── docs/
+│   ├── ESTRATEGIA.md              # Visao, triangulo de valor, diferenciais
+│   ├── ROADMAP.md                 # Entregas + plano lancamento + backlog
+│   ├── DECISOES.md                # Registro de decisoes
+│   ├── REGRAS_NEGOCIO.md          # Regras inviolaveis
+│   ├── agentes/                   # Prompts dos agentes IA (executivo/, comercial/, tools/)
+│   ├── entregas/                  # Documentos produzidos pelos agentes
+│   └── contexto/                  # Brandbook, metas, financeiro, sessoes
 └── sorteio/
-    ├── settings.py                # Configuracoes Django
+    ├── settings.py                # Configuracoes Django (dotenv)
     └── urls.py                    # URLs raiz
 ```

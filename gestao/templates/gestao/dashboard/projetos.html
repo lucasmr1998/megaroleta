@@ -1,0 +1,88 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Projetos{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1 class="page-title">Projetos</h1>
+        <p class="page-subtitle">Gerencie os projetos do Clube Megalink.</p>
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('modal-projeto').style.display='flex'">
+        <i class="fas fa-plus"></i> Novo Projeto
+    </button>
+</div>
+
+<!-- Modal -->
+<div id="modal-projeto" class="modal-overlay">
+    <div class="modal-content" style="max-width:500px;">
+        <button onclick="document.getElementById('modal-projeto').style.display='none'" class="modal-close">&times;</button>
+        <h3 style="margin-bottom:20px;"><i class="fas fa-folder-plus" style="color:var(--primary); margin-right:8px;"></i>Novo Projeto</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="criar">
+            <div class="form-group">
+                <label class="form-label">Nome *</label>
+                <input type="text" name="nome" class="form-control" required placeholder="Ex: Lancamento Floriano">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Descri&ccedil;&atilde;o</label>
+                <textarea name="descricao" class="form-control" rows="2"></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Respons&aacute;vel</label>
+                    <input type="text" name="responsavel" class="form-control" placeholder="CEO">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">In&iacute;cio</label>
+                    <input type="date" name="data_inicio" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fim Previsto</label>
+                    <input type="date" name="data_fim_prevista" class="form-control">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-projeto').style.display='none'">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Criar Projeto</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+    {% for p in projetos %}
+    <div class="card" style="padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+            <div>
+                <strong style="font-size:16px;">{{ p.nome }}</strong>
+                {% if p.responsavel %}<br><small class="text-muted">{{ p.responsavel }}</small>{% endif %}
+            </div>
+            {% if p.ativo %}<span class="badge badge-success">Ativo</span>{% else %}<span class="badge badge-danger">Inativo</span>{% endif %}
+        </div>
+        {% if p.descricao %}<p class="text-muted" style="font-size:13px; margin-bottom:12px;">{{ p.descricao|truncatewords:15 }}</p>{% endif %}
+
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <div style="flex:1; height:6px; background:var(--border-light); border-radius:3px; overflow:hidden;">
+                <div style="height:100%; width:{% widthratio p.tarefas_ok p.total_tarefas 100 %}%; background:var(--success); border-radius:3px;"></div>
+            </div>
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted);">
+                {{ p.tarefas_ok }}/{{ p.total_tarefas }}
+            </span>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+            <a href="{% url 'kanban' p.id %}" class="btn btn-primary" style="flex:1; justify-content:center; font-size:13px;">
+                <i class="fas fa-columns"></i> Kanban
+            </a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card" style="padding:40px; text-align:center; grid-column:1/-1;">
+        <i class="fas fa-folder-open" style="font-size:40px; color:#e5e7eb; margin-bottom:12px;"></i>
+        <p class="text-muted">Nenhum projeto criado.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

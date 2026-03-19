@@ -87,6 +87,49 @@
 ## Template para Novas Decisoes
 
 ```
+## D009 — App Gestao Separado
+
+**Data:** Marco/2026
+**Contexto:** CEO precisa de visao executiva (projetos, tarefas, metricas) e sala para conversar com agentes IA.
+**Decisao:** Criar app `gestao` separado com models proprios (Projeto, Tarefa, Reuniao, Mensagem).
+**Alternativas:** Usar ferramenta externa (Trello, Notion) ou integrar no app roleta.
+**Motivo:** Manter tudo dentro do sistema permite que agentes IA acessem dados de projetos/tarefas e que o CEO tenha visao unificada sem sair do dashboard.
+
+---
+
+## D010 — Moderador Inteligente nas Reunioes
+
+**Data:** Marco/2026
+**Contexto:** Nas reunioes com todos os agentes, o CEO falava algo especifico de comercial e todos respondiam, inclusive CTO e CFO que nao tinham relevancia.
+**Decisao:** Criar moderador (chamada leve ao GPT) que analisa a mensagem do CEO e decide quais agentes devem responder.
+**Alternativas:** Sempre todos respondem (barulhento), CEO seleciona manualmente quem responde (trabalhoso).
+**Motivo:** Simula uma reuniao real onde o moderador direciona a conversa. Economiza tokens e tempo.
+
+---
+
+## D011 — Reunioes Persistentes no Banco
+
+**Data:** Marco/2026
+**Contexto:** Historico da reuniao era perdido ao recarregar a pagina (estava na sessao Django).
+**Decisao:** Criar models Reuniao + MensagemReuniao no banco. Cada reuniao tem nome, descricao e participantes. Mensagens salvas automaticamente.
+**Alternativas:** Manter na sessao (simples mas volatil), salvar como arquivo .md (nao permite continuar conversa).
+**Motivo:** Permite continuar reunioes, revisitar historico e ter contexto acumulado para os agentes.
+
+---
+
+## D012 — Carteirinha Renderizada via CSS
+
+**Data:** Marco/2026
+**Contexto:** Inicialmente carteirinha dependia de imagem de fundo. CEO pediu modelo estilo Urbis (renderizado pelo sistema).
+**Decisao:** Dois modos: cores/gradiente (CSS puro com circulos decorativos) ou imagem de fundo. Admin escolhe.
+**Alternativas:** Apenas imagem (limitado), apenas CSS (sem flexibilidade de design complexo).
+**Motivo:** CSS puro permite criar infinitos modelos sem designer. Imagem como opcao para casos especiais.
+
+---
+
+## Template para Novas Decisoes
+
+```
 ## DXXX — Titulo
 
 **Data:**

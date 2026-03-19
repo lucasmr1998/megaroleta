@@ -1,0 +1,85 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Editar — {{ nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <span class="badge badge-info">{{ agente|upper }}</span>
+        <h1 class="page-title">Editar: {{ nome }}</h1>
+    </div>
+    <a href="{% url 'gestao_entrega_detalhe' agente arquivo %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+</div>
+
+<form method="post">
+{% csrf_token %}
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <!-- Editor -->
+    <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h3 style="font-size:14px; font-weight:700; color:var(--text-muted);">Markdown</h3>
+            <button type="submit" class="btn btn-primary" style="font-size:13px;"><i class="fas fa-save"></i> Salvar</button>
+        </div>
+        <textarea name="conteudo" id="editor" style="
+            width:100%; min-height:calc(100vh - 250px);
+            padding:16px; border:1px solid var(--border); border-radius:12px;
+            font-family:'JetBrains Mono', 'Fira Code', monospace; font-size:13px;
+            line-height:1.6; resize:vertical; outline:none; background:white;
+            tab-size:2;
+        " oninput="atualizarPreview()">{{ conteudo }}</textarea>
+    </div>
+
+    <!-- Preview -->
+    <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h3 style="font-size:14px; font-weight:700; color:var(--text-muted);">Preview</h3>
+        </div>
+        <div id="preview" class="card" style="
+            padding:24px; min-height:calc(100vh - 250px);
+            overflow-y:auto; font-size:14px; line-height:1.7;
+        "></div>
+    </div>
+</div>
+</form>
+
+<style>
+#preview h1 { font-size:22px; font-weight:800; margin:20px 0 10px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+#preview h2 { font-size:18px; font-weight:700; margin:16px 0 8px; }
+#preview h3 { font-size:15px; font-weight:700; margin:12px 0 6px; }
+#preview p { margin:6px 0; }
+#preview ul, #preview ol { padding-left:24px; margin:6px 0; }
+#preview li { margin:3px 0; }
+#preview strong { font-weight:700; }
+#preview code { background:var(--border-light); padding:2px 6px; border-radius:4px; font-size:12px; color:var(--primary); }
+#preview pre { background:#1e293b; color:#e2e8f0; padding:14px; border-radius:10px; overflow-x:auto; margin:10px 0; }
+#preview pre code { background:transparent; color:inherit; padding:0; }
+#preview blockquote { border-left:3px solid var(--primary); padding:6px 14px; margin:10px 0; background:var(--primary-light); border-radius:0 8px 8px 0; }
+#preview table { width:100%; border-collapse:collapse; margin:10px 0; }
+#preview th { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; padding:8px 10px; border-bottom:2px solid var(--border); text-align:left; }
+#preview td { padding:8px 10px; border-bottom:1px solid var(--border-light); font-size:13px; }
+#preview hr { border:none; border-top:1px solid var(--border); margin:16px 0; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+function atualizarPreview() {
+    var md = document.getElementById('editor').value;
+    document.getElementById('preview').innerHTML = marked.parse(md);
+}
+// Render on load
+atualizarPreview();
+
+// Tab support in textarea
+document.getElementById('editor').addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        var start = this.selectionStart;
+        var end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 2;
+        atualizarPreview();
+    }
+});
+</script>
+{% endblock %}

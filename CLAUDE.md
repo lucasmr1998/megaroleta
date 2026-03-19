@@ -4,130 +4,127 @@ Sempre responda em português brasileiro.
 
 ## Contexto do Projeto
 
-Este é o projeto **MegaRoleta**, uma plataforma de gamificação e premiação para provedores de internet. O sistema integra com o Hubsoft (ERP do provedor) e usa validação via WhatsApp/OTP.
+Este é o **Clube Megalink**, uma plataforma de fidelidade gamificada para a Megalink Telecom (provedor de internet do Piauí e Maranhão). O sistema integra com o Hubsoft (ERP do provedor) e usa validação via WhatsApp/OTP.
+
+O projeto opera em um **triângulo de valor**: parceiro B2B (recebe clientes), cliente assinante (recebe benefícios) e Megalink (retém, engaja e se diferencia).
 
 ## Documentação Estratégica
 
 Antes de fazer qualquer alteração significativa, consulte:
 
-- `docs/ESTRATEGIA.md` — Visão, público-alvo, modelo de negócio, métricas
-- `docs/ROADMAP.md` — O que já foi feito, próximos passos, backlog de ideias
-- `docs/DECISOES.md` — Registro de decisões arquiteturais e de produto (consultar antes de propor mudanças)
-- `docs/REGRAS_NEGOCIO.md` — Regras que NUNCA devem ser quebradas (saldo, segurança, LGPD, etc.)
-- `DOCUMENTACAO.md` — Documentação técnica completa (entidades, endpoints, estrutura)
-- `docs/agentes/executivo/` — Time Executivo (CTO, CPO, CFO)
-- `docs/agentes/comercial/` — Time Comercial (CMO, Comercial B2B, Customer Success)
-- `docs/agentes/tools/` — Ferramentas reutilizáveis (análise dados, copy, ROI, code review, spec, prospecção)
+- `docs/ESTRATEGIA.md` — Visão, triângulo de valor, modelo de negócio, diferenciais
+- `docs/ROADMAP.md` — Entregas realizadas, plano de lançamento Floriano, próximos passos
+- `docs/DECISOES.md` — Registro de decisões arquiteturais e de produto
+- `docs/REGRAS_NEGOCIO.md` — Regras que NUNCA devem ser quebradas
+- `DOCUMENTACAO.md` — Documentação técnica completa
+- `docs/agentes/` — Time de agentes IA (executivo + comercial + tools)
+- `docs/entregas/` — Documentos produzidos pelos agentes (planejamentos, specs, etc.)
+- `docs/contexto/` — Base de conhecimento (brandbook, metas, financeiro, sessões)
 
 ## Regras de Segurança
 
 - **NUNCA** commitar arquivos com credenciais sensíveis
-- **SEMPRE** usar variáveis de ambiente para senhas e chaves
+- **SEMPRE** usar variáveis de ambiente para senhas e chaves (`.env`)
 - **VERIFICAR** se `.env` está no `.gitignore` antes de criar
 - **ALERTAR** se detectar credenciais hardcoded no código
 
 ## Stack Tecnológica
 
 - Backend: Django 4.2+ / Python 3.10+
-- Frontend: HTML5, CSS3, JavaScript Vanilla
-- Banco de Dados: PostgreSQL (produção) / SQLite3 (dev)
-- Integrações: Hubsoft (PostgreSQL direto + webhook n8n)
+- Frontend: HTML5, CSS3, JavaScript Vanilla (jQuery)
+- Banco de Dados: PostgreSQL (produção)
+- Integrações: Hubsoft (PostgreSQL direto + webhook n8n), OpenAI API (sala de agentes)
 - Deploy: Gunicorn + Nginx
+- Variáveis de ambiente: python-dotenv (`.env`)
 
-## Comandos Úteis
+## Arquitetura de Apps Django
 
-### Desenvolvimento
-```bash
-# Ativar ambiente virtual
-source .venv/bin/activate
-
-# Rodar migrations
-.venv/bin/python manage.py migrate
-
-# Criar superusuário
-.venv/bin/python manage.py createsuperuser
-
-# Rodar servidor de desenvolvimento
-.venv/bin/python manage.py runserver
+```
+megaroleta/
+├── roleta/          # Core: roleta, membros, prêmios, gamificação, área do membro
+├── parceiros/       # B2B: parceiros, cupons, resgates, painel do parceiro
+├── indicacoes/      # Indicações, embaixadores, página pública
+├── carteirinha/     # Carteirinhas virtuais, modelos, regras de atribuição
+├── gestao/          # Gestão de projetos, Kanban, sala de agentes IA, entregas, sessões
+└── sorteio/         # Projeto Django (settings, urls raiz)
 ```
 
-### Produção
-```bash
-# Coletar arquivos estáticos
-.venv/bin/python manage.py collectstatic --noinput
+### Views por App
 
-# Reiniciar serviço Gunicorn
-sudo systemctl restart megaroleta
-
-# Ver logs do serviço
-sudo journalctl -u megaroleta -n 50 -f
-
-# Testar configuração do Nginx
-sudo nginx -t
-
-# Recarregar Nginx
-sudo systemctl reload nginx
-```
-
-## Arquitetura do Código
-
-### Estrutura de Pastas
-```
-roleta/
-├── models.py              # Modelos de dados (9 models)
-├── admin.py               # Configuração do Django Admin
-├── urls.py                # Rotas da aplicação
-├── views/                 # Views separadas por domínio
-│   ├── core_views.py      # Views principais
-│   ├── api_views.py       # Endpoints JSON (sorteio, OTP)
-│   ├── dashboard_views.py # Painel administrativo
-│   └── docs_views.py      # Documentação
-├── services/              # Lógica de negócio isolada
-│   ├── sorteio_service.py     # Algoritmo de sorteio
-│   ├── hubsoft_service.py     # Integração Hubsoft
-│   ├── otp_service.py         # Envio de OTP via WhatsApp
-│   └── gamification_service.py # Sistema de pontos/XP
-└── templates/             # HTML/CSS/JS
-```
+- `roleta/views/core_views.py` — index, logout
+- `roleta/views/api_views.py` — init-dados, cadastrar, OTP, resgate cupom, indicação
+- `roleta/views/dashboard_views.py` — Admin: dashboard, prêmios, membros, giros, relatórios
+- `roleta/views/membro_views.py` — Hub, jogar, cupons, indicar, perfil, missões, carteirinha
+- `parceiros/views.py` — Admin: parceiros, cupons, resgates, detalhe
+- `parceiros/views_painel.py` — Painel do parceiro: dashboard, cupons, resgates, validar
+- `indicacoes/views.py` — Admin: indicações, embaixadores, visual + página pública
+- `carteirinha/views.py` — Admin: modelos, regras, preview + membro: carteirinha
+- `gestao/views.py` — Dashboard CEO, projetos, Kanban, sala de agentes, entregas, sessões
 
 ### Modelos Principais
 
-- **MembroClube**: CRM com gamificação (saldo, XP, níveis)
-- **PremioRoleta**: Catálogo de prêmios com estoque e probabilidade
-- **ParticipanteRoleta**: Histórico de giros realizados
-- **RegraPontuacao**: Regras de gamificação (gatilhos e recompensas)
-- **ExtratoPontuacao**: Histórico auditável de pontos ganhos
+**roleta**: MembroClube, PremioRoleta, ParticipanteRoleta, RegraPontuacao, ExtratoPontuacao, NivelClube, RoletaConfig, RouletteAsset, Cidade
+**parceiros**: Parceiro (com FK User), CupomDesconto, ResgateCupom
+**indicacoes**: Indicacao, IndicacaoConfig
+**carteirinha**: ModeloCarteirinha, RegraAtribuicao, CarteirinhaMembro
+**gestao**: Projeto, Etapa, Tarefa, Nota, Reuniao, MensagemReuniao
 
-### Padrões de Código
+## Dashboard Admin — Topbar de Módulos
 
-- Use `@transaction.atomic` para operações que modificam múltiplos registros
+```
+[Roleta] [Parceiros] [Indicações] [Carteirinha] [Operação] [Relatórios] [Gestão]  📖 ⚙ ↗
+```
+
+Cada módulo tem sidebar própria que muda conforme selecionado.
+
+## Área do Membro — Hub com 6 Cards
+
+```
+[Roleta] [Cupons] [Indicar] [Perfil] [Carteirinha] [Missões]
+```
+
+Fundo `#000b4a`, cards brancos, mobile-first.
+
+## Painel do Parceiro
+
+Acesso via `/roleta/parceiro/login/` — independente do admin.
+Páginas: Dashboard, Cupons (com solicitação), Resgates, Validar.
+
+## Sala de Agentes IA
+
+Integrada com OpenAI API (`gpt-4o-mini`). Localizada em `/roleta/dashboard/gestao/sala/`.
+
+- **Chat individual**: Conversa 1:1 com qualquer agente
+- **Reunião**: Cria reunião com nome/descrição, moderador inteligente direciona, agentes respondem sequencialmente, histórico salvo no banco
+- **Ações dos agentes**: Salvar entregas, sessões, criar/atualizar tarefas
+- **Consulta entre agentes**: Um agente pode consultar outro
+
+### Agentes Disponíveis
+
+```
+docs/agentes/
+├── executivo/: CTO, CPO, CFO
+├── comercial/: CMO, PMM, Comercial B2B, Customer Success
+└── tools/: analise_dados, gerador_copy, calculadora_roi, auditor_codigo, gerador_spec, prospector_parceiro
+```
+
+## Padrões de Código
+
+- Use `@transaction.atomic` para operações que modificam saldo/estoque
 - Proteção contra race condition: `select_for_update()` + `F()` expressions
-- Serviços devem ser stateless (métodos estáticos)
-- Logging via Django logger (não arquivos diretos)
+- Performance: `annotate`, `select_related`, `prefetch_related`, paginação 50/pg
+- Serviços stateless (métodos estáticos)
+- Todos os formulários POST devem salvar TODOS os campos do template (bug recorrente!)
+- Mobile first: toda interface do membro deve funcionar em celular
 
-## Integrações Críticas
+## Integrações
 
-### Hubsoft
-- **Webhook n8n**: Consulta dados cadastrais do cliente
-- **PostgreSQL direto**: Consulta cidade de instalação e pontos extras
-- **Gatilhos de pontuação**: recorrência, pagamento adiantado, uso do app
-
-### OTP via WhatsApp
-- Rate limiting: 60 segundos entre requisições
-- Expiração: 10 minutos
-- Envio via webhook n8n
-
-## Boas Práticas
-
-- Sempre validar saldo antes de permitir giro
-- Verificar limites de giros configurados
-- Sincronizar pontos Hubsoft na validação do OTP
-- Usar transações atômicas para operações críticas
-- Logs detalhados para debug de produção
+- **Hubsoft**: Webhook n8n (dados do cliente) + PostgreSQL read-only (cidade, recorrência, app)
+- **OTP WhatsApp**: Webhook n8n, rate limiting 60s, expiração 10min
+- **OpenAI**: API key no `.env`, modelo `gpt-4o-mini`, usado na sala de agentes
 
 ## Observações de Segurança
 
-⚠️ **ATENÇÃO**: Este projeto contém dados sensíveis de clientes (CPF, telefone, endereço).
-- Sempre seguir LGPD ao manipular dados pessoais
-- Não expor informações sensíveis em logs
-- Validar e sanitizar todos os inputs do usuário
+⚠️ Dados sensíveis de clientes (CPF, telefone, endereço) — seguir LGPD.
+⚠️ Credenciais do banco ainda hardcoded no settings.py — meta: migrar para .env.
+⚠️ Parceiro só vê seus próprios dados (isolamento por FK).

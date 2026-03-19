@@ -1,0 +1,67 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Sala de Agentes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Sala de Agentes</h1>
+    <p class="page-subtitle">Converse individualmente ou fa&ccedil;a uma reuni&atilde;o com todo o time.</p>
+</div>
+
+<!-- Nova Reuniao -->
+<a href="{% url 'sala_reuniao_criar' %}" style="text-decoration:none; display:block; margin-bottom:24px;">
+    <div style="background:linear-gradient(135deg, #6366f1, #8b5cf6); border-radius:16px; padding:24px; color:white; display:flex; align-items:center; gap:20px; transition:transform 0.2s;">
+        <div style="width:56px; height:56px; border-radius:14px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;">
+            <i class="fas fa-plus"></i>
+        </div>
+        <div>
+            <div style="font-size:18px; font-weight:800;">Nova Reuni&atilde;o</div>
+            <div style="font-size:13px; opacity:0.8;">Crie uma reuni&atilde;o com nome, descri&ccedil;&atilde;o e escolha os participantes.</div>
+        </div>
+        <i class="fas fa-arrow-right" style="margin-left:auto; font-size:20px; opacity:0.6;"></i>
+    </div>
+</a>
+
+<!-- Reunioes Existentes -->
+{% if reunioes %}
+<h2 style="font-size:16px; font-weight:700; color:var(--text-main); margin-bottom:12px;">Reuni&otilde;es Recentes</h2>
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px; margin-bottom:24px;">
+    {% for r in reunioes %}
+    <a href="{% url 'sala_reuniao' r.id %}" style="text-decoration:none; color:inherit;">
+        <div class="card" style="padding:16px; transition:box-shadow 0.2s;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong style="font-size:14px;">{{ r.nome }}</strong>
+                <span style="font-size:11px; color:var(--text-muted);">{{ r.total_mensagens }} msgs</span>
+            </div>
+            {% if r.descricao %}<p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">{{ r.descricao|truncatewords:10 }}</p>{% endif %}
+            <div style="font-size:11px; color:var(--text-light);">{{ r.data_criacao|date:"d/m/Y H:i" }}</div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Agentes Individuais -->
+<h2 style="font-size:16px; font-weight:700; color:var(--text-main); margin-bottom:16px;">Chat Individual</h2>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+    {% for a in agentes %}
+    <a href="{% url 'sala_chat' a.id %}" style="text-decoration:none; color:inherit;">
+        <div class="card" style="padding:20px; transition:transform 0.2s, box-shadow 0.2s; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:44px; height:44px; border-radius:12px; background:{{ a.cor }}15; display:flex; align-items:center; justify-content:center;">
+                    <i class="{{ a.icone }}" style="font-size:18px; color:{{ a.cor }};"></i>
+                </div>
+                <div>
+                    <div style="font-size:15px; font-weight:700;">{{ a.nome }}</div>
+                    <div style="font-size:12px; color:var(--text-muted);">{{ a.descricao }}</div>
+                </div>
+            </div>
+            <div style="margin-top:10px;">
+                <span class="badge" style="background:{{ a.cor }}15; color:{{ a.cor }}; font-size:10px;">{{ a.time }}</span>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

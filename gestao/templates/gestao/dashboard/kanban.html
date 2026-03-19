@@ -1,0 +1,171 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Kanban — {{ projeto.nome }}{% endblock %}
+
+{% block content %}
+
+<!-- Modal Criar Tarefa -->
+<div id="modal-tarefa" class="modal-overlay">
+    <div class="modal-content" style="max-width:500px;">
+        <button onclick="document.getElementById('modal-tarefa').style.display='none'" class="modal-close">&times;</button>
+        <h3 style="margin-bottom:20px;"><i class="fas fa-plus" style="color:var(--primary); margin-right:8px;"></i>Nova Tarefa</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="criar_tarefa">
+            <div class="form-group">
+                <label class="form-label">T&iacute;tulo *</label>
+                <input type="text" name="titulo" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Descri&ccedil;&atilde;o</label>
+                <textarea name="descricao" class="form-control" rows="2"></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Respons&aacute;vel</label>
+                    <input type="text" name="responsavel" class="form-control" placeholder="Ex: CEO, Comercial B2B">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prioridade</label>
+                    <select name="prioridade" class="form-control">
+                        <option value="media">M&eacute;dia</option>
+                        <option value="alta">Alta</option>
+                        <option value="critica">Cr&iacute;tica</option>
+                        <option value="baixa">Baixa</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Etapa</label>
+                    <select name="etapa_id" class="form-control">
+                        <option value="">Sem etapa</option>
+                        {% for e in etapas %}
+                        <option value="{{ e.id }}">{{ e.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prazo</label>
+                    <input type="date" name="data_limite" class="form-control">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-tarefa').style.display='none'">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Criar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1 class="page-title">{{ projeto.nome }}</h1>
+        <p class="page-subtitle">{{ projeto.descricao|truncatewords:15|default:"Kanban do projeto" }}</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <a href="{% url 'dashboard_ceo' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Dashboard</a>
+        <button class="btn btn-primary" onclick="document.getElementById('modal-tarefa').style.display='flex'">
+            <i class="fas fa-plus"></i> Nova Tarefa
+        </button>
+    </div>
+</div>
+
+<!-- Progresso -->
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+    <div style="flex:1; height:8px; background:var(--border-light); border-radius:4px; overflow:hidden;">
+        <div style="height:100%; width:{{ projeto.progresso }}%; background:var(--success); border-radius:4px;"></div>
+    </div>
+    <span style="font-size:14px; font-weight:700; color:var(--text-muted);">{{ projeto.progresso }}%</span>
+</div>
+
+<!-- Kanban Board -->
+<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; min-height:400px;">
+
+    <!-- Pendente -->
+    <div style="background:#f8fafc; border-radius:12px; padding:12px; border:1px solid #e5e7eb;">
+        <div style="margin-bottom:12px; padding:0 4px;">
+            <h3 style="font-size:13px; font-weight:700; color:#94a3b8; text-transform:uppercase;">
+                <span style="color:#94a3b8;">&#9679;</span> Pendente
+            </h3>
+        </div>
+        {% for t in projeto.tarefas.all %}{% if t.status == 'pendente' %}
+        <div style="background:white; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px;
+            {% if t.prioridade == 'critica' %}border-left:3px solid var(--danger);{% elif t.prioridade == 'alta' %}border-left:3px solid var(--warning);{% endif %}">
+            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px;">{{ t.titulo }}</div>
+            {% if t.responsavel %}<div style="font-size:11px; color:#64748b; margin-bottom:4px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
+            {% if t.data_limite %}<div style="font-size:11px; color:#94a3b8; margin-bottom:6px;"><i class="fas fa-calendar" style="margin-right:4px;"></i>{{ t.data_limite|date:"d/m" }}</div>{% endif %}
+            <div style="display:flex; gap:4px;">
+                <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="mover"><input type="hidden" name="tarefa_id" value="{{ t.id }}"><input type="hidden" name="novo_status" value="em_andamento">
+                    <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid var(--primary); border-radius:4px; background:#eff6ff; color:var(--primary); cursor:pointer;">Iniciar &rarr;</button>
+                </form>
+                <form method="post" style="display:inline;" onsubmit="return confirm('Excluir?')">{% csrf_token %}<input type="hidden" name="action" value="excluir_tarefa"><input type="hidden" name="tarefa_id" value="{{ t.id }}">
+                    <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid #e5e7eb; border-radius:4px; background:white; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>
+                </form>
+            </div>
+        </div>
+        {% endif %}{% endfor %}
+    </div>
+
+    <!-- Em Andamento -->
+    <div style="background:#eff6ff; border-radius:12px; padding:12px; border:1px solid #dbeafe;">
+        <div style="margin-bottom:12px; padding:0 4px;">
+            <h3 style="font-size:13px; font-weight:700; color:var(--primary); text-transform:uppercase;">
+                <span style="color:var(--primary);">&#9679;</span> Em Andamento
+            </h3>
+        </div>
+        {% for t in projeto.tarefas.all %}{% if t.status == 'em_andamento' %}
+        <div style="background:white; border:1px solid #dbeafe; border-radius:10px; padding:12px; margin-bottom:8px;
+            {% if t.prioridade == 'critica' %}border-left:3px solid var(--danger);{% elif t.prioridade == 'alta' %}border-left:3px solid var(--warning);{% endif %}">
+            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px;">{{ t.titulo }}</div>
+            {% if t.responsavel %}<div style="font-size:11px; color:#64748b; margin-bottom:4px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
+            {% if t.data_limite %}<div style="font-size:11px; color:#94a3b8; margin-bottom:6px;"><i class="fas fa-calendar" style="margin-right:4px;"></i>{{ t.data_limite|date:"d/m" }}</div>{% endif %}
+            <div style="display:flex; gap:4px;">
+                <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="mover"><input type="hidden" name="tarefa_id" value="{{ t.id }}"><input type="hidden" name="novo_status" value="pendente">
+                    <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid #e5e7eb; border-radius:4px; background:white; color:#64748b; cursor:pointer;">&larr;</button>
+                </form>
+                <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="mover"><input type="hidden" name="tarefa_id" value="{{ t.id }}"><input type="hidden" name="novo_status" value="concluida">
+                    <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid var(--success); border-radius:4px; background:#ecfdf5; color:var(--success); cursor:pointer;">Concluir &#10003;</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}{% endfor %}
+    </div>
+
+    <!-- Concluida -->
+    <div style="background:#ecfdf5; border-radius:12px; padding:12px; border:1px solid #a7f3d0;">
+        <div style="margin-bottom:12px; padding:0 4px;">
+            <h3 style="font-size:13px; font-weight:700; color:var(--success); text-transform:uppercase;">
+                <span style="color:var(--success);">&#9679;</span> Conclu&iacute;da
+            </h3>
+        </div>
+        {% for t in projeto.tarefas.all %}{% if t.status == 'concluida' %}
+        <div style="background:white; border:1px solid #a7f3d0; border-radius:10px; padding:12px; margin-bottom:8px; opacity:0.8;">
+            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:4px; text-decoration:line-through;">{{ t.titulo }}</div>
+            {% if t.responsavel %}<div style="font-size:11px; color:#64748b;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+    </div>
+
+    <!-- Bloqueada -->
+    <div style="background:#fef2f2; border-radius:12px; padding:12px; border:1px solid #fecaca;">
+        <div style="margin-bottom:12px; padding:0 4px;">
+            <h3 style="font-size:13px; font-weight:700; color:var(--danger); text-transform:uppercase;">
+                <span style="color:var(--danger);">&#9679;</span> Bloqueada
+            </h3>
+        </div>
+        {% for t in projeto.tarefas.all %}{% if t.status == 'bloqueada' %}
+        <div style="background:white; border:1px solid #fecaca; border-radius:10px; padding:12px; margin-bottom:8px;">
+            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px;">{{ t.titulo }}</div>
+            {% if t.responsavel %}<div style="font-size:11px; color:#64748b; margin-bottom:4px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
+            <div style="display:flex; gap:4px;">
+                <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="mover"><input type="hidden" name="tarefa_id" value="{{ t.id }}"><input type="hidden" name="novo_status" value="pendente">
+                    <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid #e5e7eb; border-radius:4px; background:white; color:#64748b; cursor:pointer;">Desbloquear</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}{% endfor %}
+    </div>
+
+</div>
+{% endblock %}

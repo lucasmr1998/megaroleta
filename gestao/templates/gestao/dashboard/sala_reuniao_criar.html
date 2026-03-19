@@ -1,0 +1,49 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Nova Reuni&atilde;o{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1 class="page-title">Nova Reuni&atilde;o</h1>
+        <p class="page-subtitle">Defina o nome, descri&ccedil;&atilde;o e participantes.</p>
+    </div>
+    <a href="{% url 'sala_agentes' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Sala</a>
+</div>
+
+<div class="card" style="padding:24px; max-width:600px;">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label class="form-label">Nome da Reuni&atilde;o *</label>
+            <input type="text" name="nome" class="form-control" required placeholder="Ex: Review Semanal, Planejamento Floriano">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Descri&ccedil;&atilde;o</label>
+            <textarea name="descricao" class="form-control" rows="2" placeholder="Objetivo da reuni&atilde;o..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Participantes *</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                {% for a in agentes %}
+                <label style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:{{ a.cor }}08; border:1px solid {{ a.cor }}20; border-radius:10px; cursor:pointer; transition:background 0.15s;">
+                    <input type="checkbox" name="agentes" value="{{ a.id }}" checked style="accent-color:{{ a.cor }};">
+                    <i class="{{ a.icone }}" style="color:{{ a.cor }};"></i>
+                    <div>
+                        <div style="font-size:14px; font-weight:700;">{{ a.nome }}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">{{ a.descricao }}</div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; justify-content:center; font-size:15px;">
+            <i class="fas fa-play"></i> Iniciar Reuni&atilde;o
+        </button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Reuni&atilde;o de Agentes{% endblock %}
+
+{% block content %}
+<style>
+    .reuniao-input { display:flex; gap:10px; margin-bottom:24px; }
+    .reuniao-input textarea { flex:1; padding:14px 18px; border:1px solid var(--border); border-radius:12px; font-size:15px; font-family:'Inter',sans-serif; resize:none; outline:none; min-height:56px; }
+    .reuniao-input textarea:focus { border-color:var(--primary); }
+    .reuniao-input button { padding:14px 24px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:white; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap; }
+    .reuniao-input button:disabled { opacity:0.5; cursor:not-allowed; }
+    .resposta-agente { margin-bottom:20px; }
+    .resposta-header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+    .resposta-avatar { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+    .resposta-body { background:white; border:1px solid var(--border); border-radius:14px; padding:20px; font-size:14px; line-height:1.7; }
+    .resposta-body h1,.resposta-body h2,.resposta-body h3 { margin:12px 0 6px; }
+    .resposta-body h2 { font-size:16px; }
+    .resposta-body h3 { font-size:14px; }
+    .resposta-body ul,.resposta-body ol { padding-left:20px; margin:6px 0; }
+    .resposta-body table { width:100%; border-collapse:collapse; margin:8px 0; font-size:12px; }
+    .resposta-body th,.resposta-body td { padding:6px 8px; border:1px solid var(--border-light); text-align:left; }
+    .resposta-body th { background:var(--bg-page); font-weight:700; }
+    .resposta-body code { background:var(--border-light); padding:1px 4px; border-radius:3px; font-size:12px; }
+    .resposta-body pre { background:#1e293b; color:#e2e8f0; padding:12px; border-radius:8px; overflow-x:auto; }
+    .resposta-body pre code { background:transparent; color:inherit; }
+    .resposta-body strong { font-weight:700; }
+    .resposta-body blockquote { border-left:3px solid var(--primary); padding:6px 12px; margin:8px 0; background:var(--primary-light); border-radius:0 6px 6px 0; }
+    .loading-agente { display:flex; align-items:center; gap:10px; padding:16px; color:var(--text-muted); font-size:13px; }
+    .typing-dots span { animation:blink 1.4s infinite; font-size:20px; }
+    .typing-dots span:nth-child(2) { animation-delay:0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay:0.4s; }
+    @keyframes blink { 0%,100%{opacity:0.2} 50%{opacity:1} }
+</style>
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1 class="page-title"><i class="fas fa-users" style="color:#6366f1; margin-right:8px;"></i>{{ reuniao.nome }}</h1>
+        <p class="page-subtitle">{{ reuniao.descricao|default:"Reuni&atilde;o com agentes de IA" }}</p>
+    </div>
+    <a href="{% url 'sala_agentes' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Sala</a>
+</div>
+
+<!-- Participantes -->
+<div class="card" style="padding:16px; margin-bottom:16px;">
+    <div style="font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">Participantes:</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="agentes-selecionados">
+        {% for a in agentes %}
+        <label style="display:flex; align-items:center; gap:6px; padding:6px 12px; background:{{ a.cor }}10; border:1px solid {{ a.cor }}30; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;">
+            <input type="checkbox" class="agente-cb" value="{{ a.id }}" checked style="accent-color:{{ a.cor }};">
+            <i class="{{ a.icone }}" style="color:{{ a.cor }};"></i> {{ a.nome }}
+        </label>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Input -->
+<div class="reuniao-input">
+    <textarea id="reuniao-input" placeholder="Fa&ccedil;a sua pergunta para o time..." rows="2" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarReuniao();}"></textarea>
+    <button id="btn-reuniao" onclick="enviarReuniao()"><i class="fas fa-paper-plane" style="margin-right:6px;"></i>Enviar</button>
+    <button onclick="limparReuniao()" class="btn btn-secondary" style="padding:14px 16px; border-radius:12px;" title="Limpar conversa"><i class="fas fa-trash"></i></button>
+</div>
+
+<!-- Historico do banco -->
+<div id="respostas-container">
+    {% for m in mensagens %}
+    {% if m.tipo == 'ceo' %}
+    <div style="background:var(--primary); color:white; padding:14px 20px; border-radius:14px; margin-bottom:16px; font-size:14px;"><strong>CEO:</strong> {{ m.conteudo }}</div>
+    {% elif m.tipo == 'moderador' %}
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; padding:0 4px;"><i class="fas fa-robot" style="margin-right:4px;"></i>{{ m.conteudo }}</div>
+    {% else %}
+    <div class="resposta-agente">
+        <div class="resposta-header">
+            <div class="resposta-avatar" style="background:#64748b15; color:#64748b;"><i class="fas fa-user"></i></div>
+            <div><div style="font-size:15px; font-weight:700;">{{ m.agente_nome }}</div></div>
+        </div>
+        <div class="resposta-body">{{ m.conteudo|safe }}</div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+var csrfToken = '{{ csrf_token }}';
+var reuniaoId = {{ reuniao.id }};
+var agentesInfo = {
+    {% for a in agentes_todos %}
+    '{{ a.id }}': {nome: '{{ a.nome }}', icone: '{{ a.icone }}', cor: '{{ a.cor }}'},
+    {% endfor %}
+};
+
+async function enviarReuniao() {
+    var input = document.getElementById('reuniao-input');
+    var msg = input.value.trim();
+    if (!msg) return;
+
+    var agentesIds = [];
+    document.querySelectorAll('.agente-cb:checked').forEach(function(cb) {
+        agentesIds.push(cb.value);
+    });
+    if (agentesIds.length === 0) { alert('Selecione pelo menos 1 agente.'); return; }
+
+    var container = document.getElementById('respostas-container');
+    var btn = document.getElementById('btn-reuniao');
+
+    // Mostrar pergunta do CEO (append, nao replace)
+    container.innerHTML += '<div style="background:var(--primary); color:white; padding:14px 20px; border-radius:14px; margin-bottom:16px; font-size:14px;"><strong>CEO:</strong> ' + escapeHtml(msg) + '</div>';
+
+    input.value = '';
+    btn.disabled = true;
+
+    // 1. Perguntar ao moderador quem deve responder
+    var modLoadingId = 'mod-loading';
+    container.innerHTML += '<div id="' + modLoadingId + '" class="loading-agente"><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span> Moderador analisando...</div>';
+    window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+
+    var agentesResponder = agentesIds; // fallback
+    try {
+        var modResp = await fetch('{% url "api_chat_agente" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify({mensagem: msg, modo: 'reuniao', agentes_ids: agentesIds, reuniao_id: reuniaoId})
+        });
+        var modData = await modResp.json();
+        if (modData.success && modData.agentes_selecionados) {
+            agentesResponder = modData.agentes_selecionados;
+        }
+    } catch(e) {}
+
+    // Remover loading do moderador
+    var modEl = document.getElementById(modLoadingId);
+    if (modEl) {
+        // Mostrar quem vai responder
+        var nomes = agentesResponder.map(function(id) {
+            var i = agentesInfo[id];
+            return i ? i.nome : id;
+        }).join(', ');
+        modEl.outerHTML = '<div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; padding:0 4px;"><i class="fas fa-robot" style="margin-right:4px;"></i>Moderador direcionou para: <strong>' + nomes + '</strong></div>';
+    }
+
+    // 2. Chamar cada agente selecionado sequencialmente
+    for (var i = 0; i < agentesResponder.length; i++) {
+        var aId = agentesResponder[i];
+        var info = agentesInfo[aId] || {nome: aId, icone: 'fas fa-user', cor: '#64748b'};
+
+        var loadingId = 'loading-' + aId + '-' + Date.now();
+        container.innerHTML +=
+            '<div id="' + loadingId + '" class="resposta-agente" style="opacity:0.7;">' +
+            '<div class="resposta-header">' +
+            '<div class="resposta-avatar" style="background:' + info.cor + '15; color:' + info.cor + ';"><i class="' + info.icone + '"></i></div>' +
+            '<div><div style="font-size:15px; font-weight:700;">' + info.nome + '</div>' +
+            '<div class="loading-agente" style="padding:0; margin-top:2px;"><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span> pensando...</div>' +
+            '</div></div></div>';
+
+        window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+
+        try {
+            var response = await fetch('{% url "api_chat_agente" %}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                body: JSON.stringify({agente_id: aId, mensagem: msg, modo: 'reuniao_agente', reuniao_id: reuniaoId})
+            });
+            var data = await response.json();
+
+            var loadingEl = document.getElementById(loadingId);
+            if (data.success) {
+                var html = marked.parse(data.resposta);
+                loadingEl.outerHTML =
+                    '<div class="resposta-agente">' +
+                    '<div class="resposta-header">' +
+                    '<div class="resposta-avatar" style="background:' + info.cor + '15; color:' + info.cor + ';"><i class="' + info.icone + '"></i></div>' +
+                    '<div><div style="font-size:15px; font-weight:700;">' + info.nome + '</div></div>' +
+                    '</div>' +
+                    '<div class="resposta-body">' + html + '</div>' +
+                    '</div>';
+            } else {
+                loadingEl.outerHTML =
+                    '<div class="resposta-agente"><div class="resposta-body" style="background:#fef2f2; border-color:#fecaca; color:#dc2626;">' + info.nome + ': ' + (data.error || 'Erro') + '</div></div>';
+            }
+        } catch(e) {
+            var loadingEl = document.getElementById(loadingId);
+            if (loadingEl) {
+                loadingEl.outerHTML = '<div class="resposta-agente"><div class="resposta-body" style="background:#fef2f2; color:#dc2626;">Erro de conexao com ' + info.nome + '.</div></div>';
+            }
+        }
+
+        window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+    }
+
+    // Separador visual entre rodadas
+    container.innerHTML += '<hr style="border:none; border-top:1px dashed var(--border); margin:20px 0;">';
+
+    btn.disabled = false;
+    input.focus();
+}
+
+function limparReuniao() {
+    if (!confirm('Limpar toda a conversa?')) return;
+    document.getElementById('respostas-container').innerHTML = '';
+    fetch('{% url "api_chat_agente" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+        body: JSON.stringify({modo: 'limpar_reuniao', mensagem: 'limpar'})
+    });
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+</script>
+{% endblock %}
