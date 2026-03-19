@@ -1,5 +1,5 @@
 # Byte-compiled / optimized / DLL files
-_pycache_/
+__pycache__/
 *.py[cod]
 *$py.class
 
@@ -7,7 +7,8 @@ _pycache_/
 *.log
 *.pot
 *.pyc
-*.sqlite3
+db.sqlite
+db.sqlite3
 
 # Environments
 .env
@@ -22,3 +23,15 @@ myenv/
 # Static and media files
 staticfiles/
 media/
+
+# Logs
+logs/
+roleta_debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
