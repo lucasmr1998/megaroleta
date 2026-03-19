@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'roleta',
     'parceiros',
     'indicacoes',
+    'carteirinha',
 ]
 
 MIDDLEWARE = [

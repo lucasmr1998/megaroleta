@@ -25,6 +25,7 @@ urlpatterns = [
     path('roleta/', include('roleta.urls')),
     path('roleta/', include('parceiros.urls')),
     path('roleta/', include('indicacoes.urls')),
+    path('roleta/', include('carteirinha.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -93,22 +93,61 @@
 
 {% if meus_resgates %}
 <div class="card-page" style="margin-top:20px;">
-    <div class="card-page-title"><i class="fas fa-history"></i> Meus Resgates</div>
+    <div class="card-page-title"><i class="fas fa-ticket-alt"></i> Meus Resgates</div>
+
     {% for r in meus_resgates %}
-    <div class="resgate-item">
-        <div>
-            <div style="font-weight:700; font-size:13px;">{{ r.cupom.titulo }}</div>
-            <div style="font-size:11px; color:#64748b;">{{ r.cupom.parceiro.nome }} &middot; {{ r.data_resgate|date:"d/m/Y" }}</div>
-        </div>
-        <div style="text-align:right;">
-            <code style="font-size:13px; font-weight:700; color:#3b82f6; letter-spacing:1px;">{{ r.codigo_unico }}</code>
-            <br>
+    <div style="border:1px solid #e5e7eb; border-radius:14px; padding:16px; margin-bottom:12px; background:white;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+            {% if r.cupom.imagem %}
+            <img src="{{ r.cupom.imagem.url }}" style="width:44px; height:44px; border-radius:10px; object-fit:cover; border:1px solid #f3f4f6;">
+            {% elif r.cupom.parceiro.logo %}
+            <img src="{{ r.cupom.parceiro.logo.url }}" style="width:44px; height:44px; border-radius:10px; object-fit:cover; border:1px solid #f3f4f6;">
+            {% else %}
+            <div style="width:44px; height:44px; border-radius:10px; background:#e0e7ff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="fas fa-store" style="color:#6366f1; font-size:16px;"></i>
+            </div>
+            {% endif %}
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:700; font-size:14px; color:#1e293b;">{{ r.cupom.titulo }}</div>
+                <div style="font-size:12px; color:#64748b;">{{ r.cupom.parceiro.nome }}</div>
+            </div>
             {% if r.status == 'resgatado' %}<span class="badge badge-warning">Pendente</span>
             {% elif r.status == 'utilizado' %}<span class="badge badge-success">Utilizado</span>
             {% else %}<span class="badge badge-danger">{{ r.get_status_display }}</span>{% endif %}
         </div>
+
+        <div style="background:#f8fafc; border-radius:10px; padding:14px;">
+            <div style="text-align:center; margin-bottom:10px;">
+                <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:4px;">C&oacute;digo do Cupom</div>
+                <div style="font-size:20px; font-weight:800; letter-spacing:3px; color:#1e293b;">{{ r.codigo_unico }}</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px dashed #e5e7eb;">
+                <div style="font-size:11px; color:#94a3b8;">{{ r.data_resgate|date:"d/m/Y H:i" }}</div>
+                <div style="font-size:18px; font-weight:800; color:#3b82f6;">
+                    {% if r.cupom.tipo_desconto == 'percentual' %}{{ r.cupom.valor_desconto }}%{% else %}R$ {{ r.cupom.valor_desconto }}{% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if r.status == 'resgatado' %}
+        <div style="margin-top:10px; padding:10px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; font-size:12px; color:#92400e; text-align:center;">
+            <i class="fas fa-info-circle" style="margin-right:4px;"></i> Apresente o c&oacute;digo acima no estabelecimento para utilizar o desconto.
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
+
+    {% if meus_resgates.has_other_pages %}
+    <div style="display:flex; justify-content:center; gap:8px; margin-top:16px;">
+        {% if meus_resgates.has_previous %}
+        <a href="?page={{ meus_resgates.previous_page_number }}" style="padding:8px 16px; background:#f1f5f9; border-radius:8px; color:#475569; font-size:13px; font-weight:600; text-decoration:none;">&laquo; Anterior</a>
+        {% endif %}
+        <span style="padding:8px 16px; font-size:13px; color:#94a3b8;">{{ meus_resgates.number }} / {{ meus_resgates.paginator.num_pages }}</span>
+        {% if meus_resgates.has_next %}
+        <a href="?page={{ meus_resgates.next_page_number }}" style="padding:8px 16px; background:#f1f5f9; border-radius:8px; color:#475569; font-size:13px; font-weight:600; text-decoration:none;">Pr&oacute;xima &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

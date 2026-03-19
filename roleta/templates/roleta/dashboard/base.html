@@ -30,6 +30,10 @@
                 class="topbar-module {% if url_name == 'dashboard_indicacoes_home' or url_name == 'dashboard_indicacoes' or url_name == 'dashboard_indicacoes_membros' or url_name == 'dashboard_indicacoes_visual' %}active{% endif %}">
                 <i class="fas fa-user-plus"></i> Indica&ccedil;&otilde;es
             </a>
+            <a href="{% url 'dashboard_carteirinha' %}"
+                class="topbar-module {% if url_name == 'dashboard_carteirinha' or url_name == 'dashboard_modelos_carteirinha' or url_name == 'dashboard_regras_carteirinha' or url_name == 'dashboard_preview_carteirinha' %}active{% endif %}">
+                <i class="fas fa-id-card"></i> Carteirinha
+            </a>
             <a href="{% url 'dashboard_giros' %}"
                 class="topbar-module {% if url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' %}active{% endif %}">
                 <i class="fas fa-cogs"></i> Opera&ccedil;&atilde;o
@@ -104,6 +108,19 @@
             </a>
             <a href="{% url 'dashboard_indicacoes_visual' %}" class="nav-item {% if url_name == 'dashboard_indicacoes_visual' %}active{% endif %}">
                 <i class="fas fa-cog"></i> Configura&ccedil;&otilde;es
+            </a>
+
+            {% elif url_name == 'dashboard_carteirinha' or url_name == 'dashboard_modelos_carteirinha' or url_name == 'dashboard_regras_carteirinha' or url_name == 'dashboard_preview_carteirinha' %}
+            <!-- M&oacute;dulo: Carteirinha -->
+            <div class="sidebar-section-label">Carteirinha</div>
+            <a href="{% url 'dashboard_carteirinha' %}" class="nav-item {% if url_name == 'dashboard_carteirinha' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="{% url 'dashboard_modelos_carteirinha' %}" class="nav-item {% if url_name == 'dashboard_modelos_carteirinha' or url_name == 'dashboard_preview_carteirinha' %}active{% endif %}">
+                <i class="fas fa-palette"></i> Modelos
+            </a>
+            <a href="{% url 'dashboard_regras_carteirinha' %}" class="nav-item {% if url_name == 'dashboard_regras_carteirinha' %}active{% endif %}">
+                <i class="fas fa-magic"></i> Regras
             </a>
 
             {% elif url_name == 'dashboard_relatorios' or url_name == 'dashboard_relatorios_indicacoes' or url_name == 'dashboard_relatorios_parceiros' %}

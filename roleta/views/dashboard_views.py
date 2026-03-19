@@ -189,18 +189,20 @@ def dashboard_premios(request):
             nova_qtd = request.POST.get('quantidade')
             novas_pos = request.POST.get('posicoes')
             nova_prob = request.POST.get('probabilidade', 1)
+            nova_msg = request.POST.get('mensagem_vitoria', '')
             cidades_ids = request.POST.getlist('cidades')
-            
+
             if premio_id:
                 premio = get_object_or_404(PremioRoleta, id=premio_id)
                 premio.quantidade = int(nova_qtd)
                 premio.probabilidade = int(nova_prob)
                 if novas_pos:
                     premio.posicoes = novas_pos
+                premio.mensagem_vitoria = nova_msg
                 premio.save()
-                
+
                 premio.cidades_permitidas.set(cidades_ids)
-                
+
                 messages.success(request, f"Prêmio {premio.nome} atualizado!")
                 
         return redirect('dashboard_premios')
@@ -374,6 +376,8 @@ def dashboard_config(request):
         config.custo_giro = int(request.POST.get('custo_giro', 10))
         config.nome_clube = request.POST.get('nome_clube', 'Clube MegaLink')
         config.xp_por_giro = int(request.POST.get('xp_por_giro', 5))
+        config.limite_giros_por_membro = int(request.POST.get('limite_giros_por_membro', 0))
+        config.periodo_limite = request.POST.get('periodo_limite', 'total')
         config.save()
         messages.success(request, "Configurações do Clube MegaLink atualizadas!")
         return redirect('dashboard_config')

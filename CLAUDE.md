@@ -6,6 +6,19 @@ Sempre responda em português brasileiro.
 
 Este é o projeto **MegaRoleta**, uma plataforma de gamificação e premiação para provedores de internet. O sistema integra com o Hubsoft (ERP do provedor) e usa validação via WhatsApp/OTP.
 
+## Documentação Estratégica
+
+Antes de fazer qualquer alteração significativa, consulte:
+
+- `docs/ESTRATEGIA.md` — Visão, público-alvo, modelo de negócio, métricas
+- `docs/ROADMAP.md` — O que já foi feito, próximos passos, backlog de ideias
+- `docs/DECISOES.md` — Registro de decisões arquiteturais e de produto (consultar antes de propor mudanças)
+- `docs/REGRAS_NEGOCIO.md` — Regras que NUNCA devem ser quebradas (saldo, segurança, LGPD, etc.)
+- `DOCUMENTACAO.md` — Documentação técnica completa (entidades, endpoints, estrutura)
+- `docs/agentes/executivo/` — Time Executivo (CTO, CPO, CFO)
+- `docs/agentes/comercial/` — Time Comercial (CMO, Comercial B2B, Customer Success)
+- `docs/agentes/tools/` — Ferramentas reutilizáveis (análise dados, copy, ROI, code review, spec, prospecção)
+
 ## Regras de Segurança
 
 - **NUNCA** commitar arquivos com credenciais sensíveis

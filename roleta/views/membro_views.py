@@ -50,15 +50,19 @@ def membro_cupons(request):
     if not membro:
         return redirect('roleta_index')
 
+    from django.core.paginator import Paginator
+
     cupons = CupomService.cupons_disponiveis(membro)
 
-    # Resgates do membro
-    meus_resgates = ResgateCupom.objects.filter(membro=membro).select_related('cupom', 'cupom__parceiro').order_by('-data_resgate')[:20]
+    # Resgates do membro com paginação
+    resgates_qs = ResgateCupom.objects.filter(membro=membro).select_related('cupom', 'cupom__parceiro').order_by('-data_resgate')
+    paginator = Paginator(resgates_qs, 5)
+    page = paginator.get_page(request.GET.get('page'))
 
     return render(request, 'roleta/membro/cupons.html', {
         'membro': membro,
         'cupons': cupons,
-        'meus_resgates': meus_resgates,
+        'meus_resgates': page,
     })
 
 

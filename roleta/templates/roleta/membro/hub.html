@@ -9,7 +9,7 @@
     gap: 14px;
 }
 @media (min-width: 768px) {
-    .hub-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .hub-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; }
 }
 .hub-card {
     background: white;
@@ -46,10 +46,6 @@
 }
 .hub-card-desc {
     font-size: 12px; color: #64748b; line-height: 1.4;
-}
-.hub-card-full {
-    grid-column: 1 / -1;
-    padding: 20px 28px;
 }
 .hub-card-badge {
     position: absolute; top: 12px; right: 12px;
@@ -160,16 +156,20 @@
         <div class="hub-card-desc">Saldo, n&iacute;vel e extrato</div>
     </a>
 
-    <a href="{% url 'membro_missoes' %}" class="hub-card hub-card-full">
-        <div style="display:flex; align-items:center; gap:16px; justify-content:center;">
-            <div class="hub-card-icon" style="background:#fef3c7; color:#f59e0b; margin:0;">
-                <i class="fas fa-trophy"></i>
-            </div>
-            <div style="text-align:left;">
-                <div class="hub-card-title">Miss&otilde;es</div>
-                <div class="hub-card-desc">Complete miss&otilde;es e ganhe giros extras</div>
-            </div>
+    <a href="{% url 'membro_carteirinha' %}" class="hub-card">
+        <div class="hub-card-icon" style="background:#e0e7ff; color:#4f46e5;">
+            <i class="fas fa-id-card"></i>
         </div>
+        <div class="hub-card-title">Carteirinha</div>
+        <div class="hub-card-desc">Seu cart&atilde;o virtual</div>
+    </a>
+
+    <a href="{% url 'membro_missoes' %}" class="hub-card">
+        <div class="hub-card-icon" style="background:#fef3c7; color:#f59e0b;">
+            <i class="fas fa-trophy"></i>
+        </div>
+        <div class="hub-card-title">Miss&otilde;es</div>
+        <div class="hub-card-desc">Ganhe giros extras</div>
     </a>
 </div>
 {% endblock %}
