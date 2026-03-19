@@ -361,6 +361,10 @@ def sala_reuniao(request, reuniao_id):
     })
 
 
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
 @login_required(login_url='/roleta/dashboard/login/')
 def api_chat(request):
     """API endpoint para chat AJAX."""
@@ -374,101 +378,97 @@ def api_chat(request):
 
     agente_id = data.get('agente_id')
     mensagem = data.get('mensagem', '').strip()
-    modo = data.get('modo', 'chat')  # 'chat' ou 'reuniao'
+    modo = data.get('modo', 'chat')
+    reuniao_id = data.get('reuniao_id')
 
     if not mensagem:
         return JsonResponse({'error': 'Mensagem vazia'}, status=400)
 
-    reuniao_id = data.get('reuniao_id')
+    try:
+        if modo == 'reuniao':
+            agentes_ids = data.get('agentes_ids', [a['id'] for a in AGENTES_INFO])
 
-    if modo == 'reuniao':
-        agentes_ids = data.get('agentes_ids', [a['id'] for a in AGENTES_INFO])
+            historico_reuniao = []
+            if reuniao_id:
+                msgs_db = MensagemReuniao.objects.filter(reuniao_id=reuniao_id).order_by('-data_criacao')[:20]
+                for m in reversed(msgs_db):
+                    role = 'user' if m.tipo == 'ceo' else 'assistant'
+                    historico_reuniao.append({'role': role, 'content': f'{m.agente_nome or "CEO"}: {m.conteudo}'})
 
-        # Carregar historico do banco
-        historico_reuniao = []
-        if reuniao_id:
-            msgs_db = MensagemReuniao.objects.filter(reuniao_id=reuniao_id).order_by('-data_criacao')[:20]
-            for m in reversed(msgs_db):
-                role = 'user' if m.tipo == 'ceo' else 'assistant'
-                historico_reuniao.append({'role': role, 'content': f'{m.agente_nome or "CEO"}: {m.conteudo}'})
+                MensagemReuniao.objects.create(
+                    reuniao_id=reuniao_id,
+                    tipo='ceo',
+                    agente_nome='CEO',
+                    conteudo=mensagem,
+                )
 
-            # Salvar mensagem do CEO no banco
-            MensagemReuniao.objects.create(
-                reuniao_id=reuniao_id,
-                tipo='ceo',
-                agente_nome='CEO',
-                conteudo=mensagem,
-            )
+            agentes_selecionados = moderador_decidir(mensagem, agentes_ids, historico_reuniao)
 
-        # Moderador decide quem responde
-        agentes_selecionados = moderador_decidir(mensagem, agentes_ids, historico_reuniao)
+            return JsonResponse({
+                'success': True,
+                'agentes_selecionados': agentes_selecionados,
+            })
 
-        return JsonResponse({
-            'success': True,
-            'agentes_selecionados': agentes_selecionados,
-        })
+        elif modo == 'reuniao_agente':
+            historico_reuniao = []
+            if reuniao_id:
+                msgs_db = MensagemReuniao.objects.filter(
+                    reuniao_id=reuniao_id
+                ).filter(
+                    Q(tipo='ceo') | Q(agente_id=agente_id)
+                ).order_by('-data_criacao')[:10]
+                for m in reversed(msgs_db):
+                    role = 'user' if m.tipo == 'ceo' else 'assistant'
+                    historico_reuniao.append({'role': role, 'content': m.conteudo})
 
-    elif modo == 'reuniao_agente':
-        # Carregar historico do banco — SO mensagens do CEO + respostas DESTE agente
-        # Evita que agente veja respostas de outros e faca roleplay
-        historico_reuniao = []
-        if reuniao_id:
-            msgs_db = MensagemReuniao.objects.filter(
-                reuniao_id=reuniao_id
-            ).filter(
-                Q(tipo='ceo') | Q(agente_id=agente_id)
-            ).order_by('-data_criacao')[:10]
-            for m in reversed(msgs_db):
-                role = 'user' if m.tipo == 'ceo' else 'assistant'
-                historico_reuniao.append({'role': role, 'content': m.conteudo})
+            resposta = chat_agente(agente_id, mensagem, historico_reuniao)
+            resposta_limpa, acoes = processar_acoes(resposta, agente_id)
 
-        resposta = chat_agente(agente_id, mensagem, historico_reuniao)
-        resposta_limpa, acoes = processar_acoes(resposta, agente_id)
+            agente_info = next((a for a in AGENTES_INFO if a['id'] == agente_id), None)
+            nome = agente_info['nome'] if agente_info else agente_id
 
-        # Salvar resposta no banco
-        agente_info = next((a for a in AGENTES_INFO if a['id'] == agente_id), None)
-        nome = agente_info['nome'] if agente_info else agente_id
+            if reuniao_id:
+                MensagemReuniao.objects.create(
+                    reuniao_id=reuniao_id,
+                    tipo='agente',
+                    agente_id=agente_id,
+                    agente_nome=nome,
+                    conteudo=resposta_limpa,
+                )
 
-        if reuniao_id:
-            MensagemReuniao.objects.create(
-                reuniao_id=reuniao_id,
-                tipo='agente',
-                agente_id=agente_id,
-                agente_nome=nome,
-                conteudo=resposta_limpa,
-            )
+            return JsonResponse({
+                'success': True,
+                'resposta': resposta_limpa,
+                'acoes': acoes,
+            })
 
-        return JsonResponse({
-            'success': True,
-            'resposta': resposta_limpa,
-            'acoes': acoes,
-        })
+        elif modo == 'limpar_reuniao':
+            request.session['reuniao_historico'] = []
+            return JsonResponse({'success': True})
 
-    elif modo == 'limpar_reuniao':
-        request.session['reuniao_historico'] = []
-        return JsonResponse({'success': True})
-    else:
-        # Chat individual
-        session_key = f'chat_{agente_id}'
-        historico = request.session.get(session_key, [])
+        else:
+            session_key = f'chat_{agente_id}'
+            historico = request.session.get(session_key, [])
 
-        resposta = chat_agente(agente_id, mensagem, historico)
+            resposta = chat_agente(agente_id, mensagem, historico)
+            resposta_limpa, acoes = processar_acoes(resposta, agente_id)
 
-        # Processar acoes embutidas na resposta
-        resposta_limpa, acoes = processar_acoes(resposta, agente_id)
+            historico.append({'role': 'user', 'content': mensagem})
+            historico.append({'role': 'assistant', 'content': resposta_limpa})
+            if len(historico) > 20:
+                historico = historico[-20:]
+            request.session[session_key] = historico
 
-        # Salvar no historico
-        historico.append({'role': 'user', 'content': mensagem})
-        historico.append({'role': 'assistant', 'content': resposta_limpa})
-        if len(historico) > 20:
-            historico = historico[-20:]
-        request.session[session_key] = historico
+            return JsonResponse({
+                'success': True,
+                'resposta': resposta_limpa,
+                'acoes': acoes,
+            })
 
-        return JsonResponse({
-            'success': True,
-            'resposta': resposta_limpa,
-            'acoes': acoes,
-        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': f'Erro interno: {str(e)}'}, status=200)
 
 
 @login_required(login_url='/roleta/dashboard/login/')

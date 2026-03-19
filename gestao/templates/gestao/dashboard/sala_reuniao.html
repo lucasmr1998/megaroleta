@@ -267,15 +267,17 @@ async function pedirParaAgente(aId) {
     btn.disabled = true;
     esconderActions();
 
-    // Mostrar que o CEO pediu para esse agente
-    var perguntaParaAgente = info.nome + ', o que voce tem a dizer sobre isso?';
-    addMsg('ceo', 'Voce', perguntaParaAgente);
+    var pergunta = ultimaPergunta || 'Me dê sua perspectiva sobre o que estamos discutindo.';
+    var msgCeo = info.nome + ', sua vez.';
 
-    // Salvar msg do CEO no banco
-    fetch('{% url "api_chat_agente" %}', {
+    // Mostrar que o CEO pediu
+    addMsg('ceo', 'Voce', msgCeo);
+
+    // Salvar msg do CEO no banco (modo reuniao salva automaticamente)
+    await fetch('{% url "api_chat_agente" %}', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
-        body: JSON.stringify({mensagem: perguntaParaAgente, modo: 'reuniao', agentes_ids: [aId], reuniao_id: reuniaoId})
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mensagem: msgCeo, modo: 'reuniao', agentes_ids: [aId], reuniao_id: reuniaoId})
     });
 
     showTyping(info.nome);
@@ -283,8 +285,13 @@ async function pedirParaAgente(aId) {
     try {
         var resp = await fetch('{% url "api_chat_agente" %}', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
-            body: JSON.stringify({agente_id: aId, mensagem: ultimaPergunta + '\n\n(CEO pediu especificamente para ' + info.nome + ' responder sobre esse assunto)', modo: 'reuniao_agente', reuniao_id: reuniaoId})
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                agente_id: aId,
+                mensagem: pergunta,
+                modo: 'reuniao_agente',
+                reuniao_id: reuniaoId
+            })
         });
         var data = await resp.json();
         hideTyping();
@@ -300,9 +307,7 @@ async function pedirParaAgente(aId) {
         addMsg('agente', info.nome, 'Erro de conexao.', '#ef4444');
     }
 
-    // Mostrar botoes novamente
     showActions(rodadaResponderam);
-
     btn.disabled = false;
 }
 
