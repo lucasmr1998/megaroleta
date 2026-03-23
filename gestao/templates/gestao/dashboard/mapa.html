@@ -1,0 +1,413 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Mapa — Inteligência{% endblock %}
+
+{% block content %}
+<style>
+/* Layout */
+.m-section { margin-bottom:40px; }
+.m-title {
+    font-size:13px; font-weight:700; color:#94a3b8; text-transform:uppercase;
+    letter-spacing:0.06em; margin-bottom:16px;
+}
+
+/* Fluxo visual */
+.flow {
+    display:flex; flex-direction:column; align-items:center; gap:0;
+    position:relative;
+}
+.flow-node {
+    background:white; border-radius:16px; padding:20px 28px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06); width:100%; max-width:720px;
+    position:relative; z-index:1;
+}
+.flow-arrow {
+    width:2px; height:32px; background:#e2e8f0; position:relative; z-index:0;
+}
+.flow-arrow::after {
+    content:''; position:absolute; bottom:-4px; left:-4px;
+    width:0; height:0; border-left:5px solid transparent;
+    border-right:5px solid transparent; border-top:8px solid #e2e8f0;
+}
+.flow-branch {
+    display:flex; gap:12px; width:100%; max-width:720px;
+}
+.flow-branch > div { flex:1; }
+
+/* Nó do fluxo */
+.fn-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.fn-icon {
+    width:40px; height:40px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; flex-shrink:0;
+}
+.fn-title { font-size:15px; font-weight:800; color:#1e293b; }
+.fn-sub { font-size:12px; color:#94a3b8; }
+.fn-body { font-size:13px; color:#64748b; line-height:1.7; }
+.fn-body strong { color:#1e293b; }
+
+/* Tags e badges */
+.tag {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:11px; font-weight:600; padding:3px 10px;
+    border-radius:6px; margin:2px;
+}
+.tag-blue { background:#eff6ff; color:#2563eb; }
+.tag-green { background:#f0fdf4; color:#059669; }
+.tag-amber { background:#fef3c7; color:#d97706; }
+.tag-purple { background:#f3e8ff; color:#7c3aed; }
+.tag-pink { background:#fce7f3; color:#db2777; }
+.tag-gray { background:#f1f5f9; color:#64748b; }
+.tag-red { background:#fef2f2; color:#ef4444; }
+
+/* Stats compactos */
+.stat-row {
+    display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+}
+.stat-pill {
+    display:flex; align-items:center; gap:6px;
+    background:#f8fafc; border:1px solid #f1f5f9; border-radius:8px;
+    padding:6px 12px; font-size:12px; color:#64748b;
+}
+.stat-pill strong { color:#1e293b; font-size:14px; }
+
+/* Cards de agente compactos */
+.agent-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 12px 4px 4px; border-radius:20px;
+    background:#f8fafc; border:1px solid #f1f5f9;
+    font-size:12px; font-weight:600; color:#1e293b;
+    margin:2px;
+}
+.agent-chip-icon {
+    width:24px; height:24px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px;
+}
+
+@media (max-width: 768px) {
+    .flow-branch { flex-direction:column; }
+    .flow-node { padding:16px 20px; }
+}
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+    <div>
+        <h2 style="font-size:22px; font-weight:800; color:#1e293b; margin:0 0 4px;">
+            <i class="fas fa-sitemap" style="color:#6366f1;"></i> Mapa do Sistema
+        </h2>
+        <p style="font-size:13px; color:#94a3b8; margin:0;">Como tudo se conecta — dados em tempo real</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- FLUXO PRINCIPAL: PLATAFORMA → AGENTES → AÇÕES             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<div class="flow">
+
+    <!-- 1. PLATAFORMA -->
+    <div class="flow-node" style="border:2px solid #3b82f6;">
+        <div class="fn-header">
+            <div class="fn-icon" style="background:#eff6ff; color:#3b82f6;"><i class="fas fa-globe"></i></div>
+            <div>
+                <div class="fn-title">Clube Megalink</div>
+                <div class="fn-sub">Plataforma de fidelidade gamificada</div>
+            </div>
+        </div>
+        <div class="stat-row">
+            <div class="stat-pill"><i class="fas fa-users" style="color:#3b82f6;"></i> <strong>{{ sistema.membros }}</strong> membros</div>
+            <div class="stat-pill"><i class="fas fa-check-circle" style="color:#10b981;"></i> <strong>{{ sistema.validados }}</strong> validados</div>
+            <div class="stat-pill"><i class="fas fa-dice" style="color:#6366f1;"></i> <strong>{{ sistema.giros }}</strong> giros</div>
+            <div class="stat-pill"><i class="fas fa-store" style="color:#f59e0b;"></i> <strong>{{ sistema.parceiros }}</strong> parceiros</div>
+            <div class="stat-pill"><i class="fas fa-ticket-alt" style="color:#059669;"></i> <strong>{{ sistema.cupons }}</strong> cupons</div>
+            <div class="stat-pill"><i class="fas fa-user-plus" style="color:#d97706;"></i> <strong>{{ sistema.indicacoes }}</strong> indica&ccedil;&otilde;es</div>
+            <div class="stat-pill"><i class="fas fa-gift" style="color:#ec4899;"></i> <strong>{{ sistema.premios }}</strong> pr&ecirc;mios</div>
+            <div class="stat-pill"><i class="fas fa-medal" style="color:#f59e0b;"></i> <strong>{{ sistema.niveis }}</strong> n&iacute;veis</div>
+            <div class="stat-pill"><i class="fas fa-trophy" style="color:#8b5cf6;"></i> <strong>{{ sistema.regras }}</strong> miss&otilde;es</div>
+        </div>
+    </div>
+
+    <div class="flow-arrow"></div>
+
+    <!-- 2. DADOS ALIMENTAM OS AGENTES -->
+    <div class="flow-node" style="background:#f8fafc; border:1px dashed #cbd5e1;">
+        <div class="fn-body" style="text-align:center;">
+            <strong>Dados da plataforma</strong> alimentam os agentes como contexto autom&aacute;tico<br>
+            <span style="font-size:11px;">M&eacute;tricas + {{ total_docs }} documentos + projetos ativos + ferramentas</span>
+        </div>
+    </div>
+
+    <div class="flow-arrow"></div>
+
+    <!-- 3. AGENTES -->
+    <div class="flow-node" style="border:2px solid #6366f1;">
+        <div class="fn-header">
+            <div class="fn-icon" style="background:#e0e7ff; color:#6366f1;"><i class="fas fa-robot"></i></div>
+            <div>
+                <div class="fn-title">Time de Agentes IA</div>
+                <div class="fn-sub">{{ total_agentes }} agentes ativos &middot; {{ total_msgs_chat }} mensagens &middot; {{ total_reunioes }} reuni&otilde;es</div>
+            </div>
+        </div>
+        <div style="margin-top:12px;">
+            {% if agentes_executivo %}
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:6px;">C-Level</div>
+            <div>
+                {% for a in agentes_executivo %}
+                <span class="agent-chip">
+                    <span class="agent-chip-icon" style="background:{{ a.cor }}20; color:{{ a.cor }};"><i class="{{ a.icone }}"></i></span>
+                    {{ a.nome }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if agentes_marketing %}
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:10px 0 6px;">Marketing</div>
+            <div>
+                {% for a in agentes_marketing %}
+                <span class="agent-chip">
+                    <span class="agent-chip-icon" style="background:{{ a.cor }}20; color:{{ a.cor }};"><i class="{{ a.icone }}"></i></span>
+                    {{ a.nome }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if agentes_sucesso %}
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:10px 0 6px;">Customer Success</div>
+            <div>
+                {% for a in agentes_sucesso %}
+                <span class="agent-chip">
+                    <span class="agent-chip-icon" style="background:{{ a.cor }}20; color:{{ a.cor }};"><i class="{{ a.icone }}"></i></span>
+                    {{ a.nome }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if agentes_parcerias %}
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:10px 0 6px;">Parcerias</div>
+            <div>
+                {% for a in agentes_parcerias %}
+                <span class="agent-chip">
+                    <span class="agent-chip-icon" style="background:{{ a.cor }}20; color:{{ a.cor }};"><i class="{{ a.icone }}"></i></span>
+                    {{ a.nome }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if agentes_tech %}
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:10px 0 6px;">Produto &amp; Tech</div>
+            <div>
+                {% for a in agentes_tech %}
+                <span class="agent-chip">
+                    <span class="agent-chip-icon" style="background:{{ a.cor }}20; color:{{ a.cor }};"><i class="{{ a.icone }}"></i></span>
+                    {{ a.nome }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="flow-arrow"></div>
+
+    <!-- 4. DOIS CAMINHOS: SALA + AUTOMAÇÕES -->
+    <div class="flow-branch">
+
+        <!-- CAMINHO A: SALA (manual) -->
+        <div class="flow-node" style="border:2px solid #10b981;">
+            <div class="fn-header">
+                <div class="fn-icon" style="background:#d1fae5; color:#059669;"><i class="fas fa-comments"></i></div>
+                <div>
+                    <div class="fn-title">Sala</div>
+                    <div class="fn-sub">CEO conversa com agentes</div>
+                </div>
+            </div>
+            <div class="fn-body" style="margin-top:8px;">
+                <strong>Chat 1:1</strong> &mdash; conversa direta com qualquer agente<br>
+                <strong>Reuni&atilde;o</strong> &mdash; moderador direciona para agentes relevantes<br>
+                <strong>Slash commands</strong> &mdash; consultas r&aacute;pidas (/projetos, /tarefas, /docs)
+            </div>
+            <div class="stat-row">
+                <div class="stat-pill"><strong>{{ total_msgs_chat }}</strong> msgs chat</div>
+                <div class="stat-pill"><strong>{{ total_reunioes }}</strong> reuni&otilde;es</div>
+            </div>
+        </div>
+
+        <!-- CAMINHO B: AUTOMAÇÕES (cron) -->
+        <div class="flow-node" style="border:2px solid #f59e0b;">
+            <div class="fn-header">
+                <div class="fn-icon" style="background:#fef3c7; color:#d97706;"><i class="fas fa-bolt"></i></div>
+                <div>
+                    <div class="fn-title">Automa&ccedil;&otilde;es</div>
+                    <div class="fn-sub">Agente + Ferramenta + Trigger</div>
+                </div>
+            </div>
+            <div class="fn-body" style="margin-top:8px;">
+                {% for auto in automacoes %}
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                    {% if auto.ativo and auto.status == 'ativo' %}
+                    <i class="fas fa-circle" style="font-size:6px; color:#10b981;"></i>
+                    {% elif auto.status == 'erro' %}
+                    <i class="fas fa-circle" style="font-size:6px; color:#ef4444;"></i>
+                    {% else %}
+                    <i class="fas fa-circle" style="font-size:6px; color:#cbd5e1;"></i>
+                    {% endif %}
+                    <strong>{{ auto.tool.nome }}</strong>
+                    <span style="color:#94a3b8;">&middot; {{ auto.intervalo_horas }}h &middot; {{ auto.total_execucoes }}x</span>
+                </div>
+                {% empty %}
+                <span style="color:#94a3b8;">Nenhuma configurada</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flow-arrow"></div>
+
+    <!-- 5. FERRAMENTAS -->
+    <div class="flow-node" style="border:2px solid #8b5cf6;">
+        <div class="fn-header">
+            <div class="fn-icon" style="background:#f3e8ff; color:#8b5cf6;"><i class="fas fa-wrench"></i></div>
+            <div>
+                <div class="fn-title">Ferramentas</div>
+                <div class="fn-sub">{{ tools_exec|length }} execut&aacute;veis &middot; {{ tools_conhecimento|length }} conhecimento &middot; {{ total_logs_tool }} execu&ccedil;&otilde;es</div>
+            </div>
+        </div>
+        <div style="margin-top:12px;">
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:6px;">
+                <i class="fas fa-bolt" style="color:#f59e0b;"></i> Execut&aacute;veis &mdash; a&ccedil;&otilde;es no sistema
+            </div>
+            <div>
+                {% for t in tools_exec %}
+                <span class="tag tag-amber"><i class="{{ t.icone }}"></i> {{ t.nome }}</span>
+                {% endfor %}
+            </div>
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:10px 0 6px;">
+                <i class="fas fa-brain" style="color:#8b5cf6;"></i> Conhecimento &mdash; prompts especializados
+            </div>
+            <div>
+                {% for t in tools_conhecimento %}
+                <span class="tag tag-purple"><i class="{{ t.icone }}"></i> {{ t.nome }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flow-arrow"></div>
+
+    <!-- 6. RESULTADOS -->
+    <div class="flow-node" style="border:2px solid #059669;">
+        <div class="fn-header">
+            <div class="fn-icon" style="background:#d1fae5; color:#059669;"><i class="fas fa-check-double"></i></div>
+            <div>
+                <div class="fn-title">Resultados</div>
+                <div class="fn-sub">O que os agentes produzem</div>
+            </div>
+        </div>
+        <div style="margin-top:12px;">
+            <div class="flow-branch" style="max-width:100%;">
+                <div style="background:#f8fafc; border-radius:10px; padding:14px;">
+                    <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;"><i class="fas fa-book" style="color:#059669;"></i> Documentos</div>
+                    <div>
+                        {% for cat, total in docs_por_cat.items %}
+                        <span class="tag tag-green">{{ cat }} ({{ total }})</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div style="background:#f8fafc; border-radius:10px; padding:14px;">
+                    <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;"><i class="fas fa-columns" style="color:#3b82f6;"></i> Projetos</div>
+                    {% for p in projetos %}
+                    <div style="font-size:12px; margin-bottom:4px;">
+                        <strong>{{ p.nome }}</strong>
+                        <span style="color:#94a3b8;">&mdash; {{ p.progresso }}% &middot; {{ p.tarefas.count }} tarefas</span>
+                    </div>
+                    {% empty %}
+                    <span style="font-size:12px; color:#94a3b8;">Nenhum ativo</span>
+                    {% endfor %}
+                </div>
+                <div style="background:#f8fafc; border-radius:10px; padding:14px;">
+                    <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;"><i class="fas fa-question-circle" style="color:#3b82f6;"></i> FAQ</div>
+                    <div style="font-size:12px;">
+                        <strong>{{ total_faq }}</strong> perguntas em <strong>{{ total_faq_cats }}</strong> categorias<br>
+                        <span style="color:#94a3b8;">Geradas automaticamente via IA</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══ COMO FUNCIONA ═══ -->
+<div class="m-section" style="margin-top:48px;">
+    <div class="m-title">Como funciona</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="flow-node" style="border-left:4px solid #10b981;">
+            <div class="fn-title" style="font-size:14px; margin-bottom:8px;"><i class="fas fa-comments" style="color:#10b981;"></i> Via Sala (manual)</div>
+            <div class="fn-body">
+                <strong>1.</strong> CEO abre a Sala e escolhe um agente<br>
+                <strong>2.</strong> Digita em linguagem natural: <em>&ldquo;Crie um plano de lan&ccedil;amento para Timon&rdquo;</em><br>
+                <strong>3.</strong> Agente recebe: prompt + documentos + projetos + m&eacute;tricas<br>
+                <strong>4.</strong> OpenAI gera resposta com blocos de a&ccedil;&atilde;o<br>
+                <strong>5.</strong> Sistema executa: cria projeto, etapas, tarefas, documentos<br>
+                <strong>6.</strong> Tudo logado e vis&iacute;vel no dashboard
+            </div>
+        </div>
+        <div class="flow-node" style="border-left:4px solid #f59e0b;">
+            <div class="fn-title" style="font-size:14px; margin-bottom:8px;"><i class="fas fa-bolt" style="color:#f59e0b;"></i> Via Automa&ccedil;&atilde;o (cron)</div>
+            <div class="fn-body">
+                <strong>1.</strong> Trigger dispara no intervalo configurado<br>
+                <strong>2.</strong> Chama o agente designado (ex: Operador)<br>
+                <strong>3.</strong> Agente executa a ferramenta (ex: Gerar FAQ)<br>
+                <strong>4.</strong> Ferramenta coleta dados reais e processa<br>
+                <strong>5.</strong> Resultado salvo + log registrado<br>
+                <strong>6.</strong> Mesma ferramenta pode ser chamada na Sala manualmente
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ ARQUITETURA ═══ -->
+<div class="m-section">
+    <div class="m-title">Arquitetura T&eacute;cnica</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+        <div class="flow-node" style="border-left:4px solid #6366f1;">
+            <div class="fn-title" style="font-size:13px;"><i class="fas fa-database" style="color:#6366f1;"></i> Models</div>
+            <div style="margin-top:8px;">
+                <span class="tag tag-blue">Projeto</span>
+                <span class="tag tag-blue">Etapa</span>
+                <span class="tag tag-blue">Tarefa</span>
+                <span class="tag tag-blue">Nota</span>
+                <span class="tag tag-green">Documento</span>
+                <span class="tag tag-amber">Agente</span>
+                <span class="tag tag-amber">ToolAgente</span>
+                <span class="tag tag-amber">LogTool</span>
+                <span class="tag tag-purple">MensagemChat</span>
+                <span class="tag tag-purple">Reuniao</span>
+                <span class="tag tag-purple">MensagemReuniao</span>
+                <span class="tag tag-pink">Automacao</span>
+                <span class="tag tag-green">FAQCategoria</span>
+                <span class="tag tag-green">FAQItem</span>
+            </div>
+        </div>
+        <div class="flow-node" style="border-left:4px solid #10b981;">
+            <div class="fn-title" style="font-size:13px;"><i class="fas fa-cogs" style="color:#10b981;"></i> Services</div>
+            <div style="margin-top:8px;">
+                <div style="font-size:12px; margin-bottom:6px;"><span class="tag tag-green">ai_service</span> OpenAI, contexto, moderador</div>
+                <div style="font-size:12px; margin-bottom:6px;"><span class="tag tag-green">agent_actions</span> Executa blocos de a&ccedil;&atilde;o</div>
+                <div style="font-size:12px; margin-bottom:6px;"><span class="tag tag-green">faq_service</span> Gera FAQ via IA</div>
+                <div style="font-size:12px;"><span class="tag tag-green">health_service</span> 6 checks de sa&uacute;de</div>
+            </div>
+        </div>
+        <div class="flow-node" style="border-left:4px solid #f59e0b;">
+            <div class="fn-title" style="font-size:13px;"><i class="fas fa-plug" style="color:#f59e0b;"></i> Integra&ccedil;&otilde;es</div>
+            <div style="margin-top:8px;">
+                <div style="font-size:12px; margin-bottom:6px;"><span class="tag tag-amber">OpenAI</span> gpt-4o-mini (configur&aacute;vel)</div>
+                <div style="font-size:12px; margin-bottom:6px;"><span class="tag tag-amber">Hubsoft</span> PostgreSQL read-only</div>
+                <div style="font-size:12px; margin-bottom:6px;"><span class="tag tag-amber">n8n</span> Webhooks (OTP, cliente)</div>
+                <div style="font-size:12px;"><span class="tag tag-amber">WhatsApp</span> C&oacute;digo OTP</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

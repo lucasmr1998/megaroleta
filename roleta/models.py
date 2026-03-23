@@ -101,8 +101,8 @@ class MembroClube(models.Model):
     saldo = models.IntegerField(default=0, help_text="Saldo acumulado de pontos (Giros)")
     xp_total = models.IntegerField(default=0, help_text="Experiência acumulada (Define o Nível)")
     data_cadastro = models.DateTimeField(auto_now_add=True)
-    id_cliente_hubsoft = models.IntegerField(null=True, blank=True)
-    validado = models.BooleanField(default=False, help_text="Se o membro já validou o OTP")
+    id_cliente_hubsoft = models.IntegerField(null=True, blank=True, db_index=True)
+    validado = models.BooleanField(default=False, db_index=True, help_text="Se o membro já validou o OTP")
     codigo_indicacao = models.CharField(max_length=10, unique=True, blank=True, null=True, help_text="Código único para link de indicação")
 
     def save(self, *args, **kwargs):
@@ -134,7 +134,7 @@ class RegraPontuacao(models.Model):
     pontos_saldo = models.IntegerField(default=0, help_text="Quantos Giros/Saldo a pessoa ganha")
     pontos_xp = models.IntegerField(default=0, help_text="Quanto XP a pessoa ganha")
     limite_por_membro = models.IntegerField(default=1, help_text="Quantas vezes um mesmo membro pode ganhar? (0 para iimitado)")
-    ativo = models.BooleanField(default=True)
+    ativo = models.BooleanField(default=True, db_index=True)
     visivel_na_roleta = models.BooleanField(default=True, help_text="Se marcado, esta missão aparecerá na lista da roleta para o usuário.")
 
     def __str__(self):
@@ -183,7 +183,7 @@ class ParticipanteRoleta(models.Model):
     perfil_cliente = models.CharField(max_length=10, default='nao')
     id_cliente_hubsoft = models.IntegerField(null=True, blank=True)
     saldo = models.IntegerField(default=0, help_text="Saldo de pontos do membro")
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='reservado')
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='reservado', db_index=True)
     data_criacao = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -192,3 +192,41 @@ class ParticipanteRoleta(models.Model):
     class Meta:
         verbose_name = "Participante da Roleta"
         verbose_name_plural = "Participantes da Roleta"
+
+
+class BannerClube(models.Model):
+    """Banners rotativos da landing page publica."""
+    titulo = models.CharField(max_length=200, blank=True)
+    imagem = models.ImageField(upload_to='banners/')
+    link = models.URLField(blank=True, help_text="URL ao clicar no banner (opcional)")
+    ordem = models.IntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.titulo or f'Banner #{self.id}'
+
+    class Meta:
+        verbose_name = "Banner"
+        verbose_name_plural = "Banners"
+        ordering = ['ordem']
+
+
+class LandingConfig(models.Model):
+    """Configuracao da pagina publica do clube (singleton)."""
+    titulo = models.CharField(max_length=200, default='Clube Megalink')
+    subtitulo = models.CharField(max_length=300, default='Seu programa de fidelidade')
+    whatsapp_numero = models.CharField(max_length=20, blank=True, help_text="Numero com DDD (ex: 5586999999999)")
+    whatsapp_mensagem = models.CharField(max_length=300, default='Quero participar do Clube Megalink!')
+    texto_como_funciona = models.TextField(blank=True, help_text="Texto da secao Como Funciona (markdown)")
+    texto_rodape = models.CharField(max_length=300, blank=True)
+    cor_primaria = models.CharField(max_length=10, default='#000b4a')
+    cor_secundaria = models.CharField(max_length=10, default='#f59e0b')
+    logo = models.ImageField(upload_to='landing/', blank=True)
+    ativo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.titulo
+
+    class Meta:
+        verbose_name = "Configuracao Landing Page"
+        verbose_name_plural = "Configuracao Landing Page"

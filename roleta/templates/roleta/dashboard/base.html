@@ -35,7 +35,7 @@
                 <i class="fas fa-id-card"></i> Carteirinha
             </a>
             <a href="{% url 'dashboard_giros' %}"
-                class="topbar-module {% if url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' %}active{% endif %}">
+                class="topbar-module {% if url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' or url_name == 'dashboard_landing_config' or url_name == 'dashboard_banners' or url_name == 'dashboard_categorias' %}active{% endif %}">
                 <i class="fas fa-cogs"></i> Opera&ccedil;&atilde;o
             </a>
             <a href="{% url 'dashboard_relatorios' %}"
@@ -43,20 +43,21 @@
                 <i class="fas fa-chart-bar"></i> Relat&oacute;rios
             </a>
             <a href="{% url 'dashboard_ceo' %}"
-                class="topbar-module {% if url_name == 'dashboard_ceo' or url_name == 'gestao_projetos' or url_name == 'kanban' or url_name == 'gestao_sessoes' or url_name == 'gestao_sessao_detalhe' or url_name == 'gestao_entregas' or url_name == 'gestao_entrega_detalhe' or url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' %}active{% endif %}">
+                class="topbar-module {% if 'gestao' in url_name or url_name == 'dashboard_ceo' or url_name == 'kanban' or url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' %}active{% endif %}">
                 <i class="fas fa-tasks"></i> Gest&atilde;o
             </a>
             {% endwith %}
         </nav>
         <div class="topbar-actions">
+            <a href="{% url 'gestao_alertas' %}" class="topbar-action" title="Alertas" style="position:relative;">
+                <i class="fas fa-bell"></i>
+                {% if alertas_ativos %}<span class="topbar-badge topbar-badge-danger">{{ alertas_ativos }}</span>{% endif %}
+            </a>
             <a href="{% url 'documentacao' %}" class="topbar-action" title="Documenta&ccedil;&atilde;o">
                 <i class="fas fa-book"></i>
             </a>
             <a href="{% url 'dashboard_config' %}" class="topbar-action" title="Configura&ccedil;&otilde;es">
                 <i class="fas fa-cog"></i>
-            </a>
-            <a href="{% url 'roleta_index' %}" class="topbar-action" target="_blank" title="Ver Roleta">
-                <i class="fas fa-external-link-alt"></i>
             </a>
         </div>
     </header>
@@ -140,26 +141,46 @@
                 <i class="fas fa-handshake"></i> Parceiros
             </a>
 
-            {% elif url_name == 'dashboard_ceo' or url_name == 'gestao_projetos' or url_name == 'kanban' or url_name == 'gestao_sessoes' or url_name == 'gestao_sessao_detalhe' or url_name == 'gestao_entregas' or url_name == 'gestao_entrega_detalhe' or url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' %}
+            {% elif 'gestao' in url_name or url_name == 'dashboard_ceo' or url_name == 'kanban' or url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' or 'gestao_automacao' in url_name or 'gestao_proposta' in url_name or 'gestao_alerta' in url_name %}
             <!-- M&oacute;dulo: Gest&atilde;o -->
             <div class="sidebar-section-label">Gest&atilde;o</div>
             <a href="{% url 'dashboard_ceo' %}" class="nav-item {% if url_name == 'dashboard_ceo' %}active{% endif %}">
-                <i class="fas fa-chart-line"></i> Dashboard CEO
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="{% url 'gestao_propostas' %}" class="nav-item {% if 'gestao_proposta' in url_name %}active{% endif %}">
+                <i class="fas fa-clipboard-check"></i> Propostas
+                {% if propostas_pendentes %}<span class="sidebar-badge">{{ propostas_pendentes }}</span>{% endif %}
+            </a>
+            <a href="{% url 'gestao_documentos' %}" class="nav-item {% if 'gestao_documento' in url_name %}active{% endif %}">
+                <i class="fas fa-book"></i> Documentos
             </a>
             <a href="{% url 'gestao_projetos' %}" class="nav-item {% if url_name == 'gestao_projetos' or url_name == 'kanban' %}active{% endif %}">
                 <i class="fas fa-columns"></i> Projetos
             </a>
+
+            <div class="sidebar-section-label" style="margin-top:16px;">Intelig&ecirc;ncia</div>
             <a href="{% url 'sala_agentes' %}" class="nav-item {% if url_name == 'sala_agentes' or url_name == 'sala_chat' or url_name == 'sala_reuniao' %}active{% endif %}">
-                <i class="fas fa-robot"></i> Sala de Agentes
+                <i class="fas fa-comments"></i> Sala
             </a>
-            <a href="{% url 'gestao_entregas' %}" class="nav-item {% if url_name == 'gestao_entregas' or url_name == 'gestao_entrega_detalhe' %}active{% endif %}">
-                <i class="fas fa-file-alt"></i> Entregas
-            </a>
-            <a href="{% url 'gestao_sessoes' %}" class="nav-item {% if url_name == 'gestao_sessoes' or url_name == 'gestao_sessao_detalhe' %}active{% endif %}">
-                <i class="fas fa-comments"></i> Sess&otilde;es
+            <a href="{% url 'gestao_mapa' %}" class="nav-item {% if url_name == 'gestao_mapa' %}active{% endif %}">
+                <i class="fas fa-sitemap"></i> Mapa
             </a>
 
-            {% elif url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' %}
+            <div class="sidebar-section-label" style="margin-top:16px;">Sistema</div>
+            <a href="{% url 'gestao_agentes' %}" class="nav-item {% if 'gestao_agente' in url_name %}active{% endif %}">
+                <i class="fas fa-robot"></i> Agentes
+            </a>
+            <a href="{% url 'gestao_tools' %}" class="nav-item {% if 'gestao_tool' in url_name %}active{% endif %}">
+                <i class="fas fa-wrench"></i> Ferramentas
+            </a>
+            <a href="{% url 'gestao_automacoes' %}" class="nav-item {% if 'gestao_automacao' in url_name %}active{% endif %}">
+                <i class="fas fa-bolt"></i> Automa&ccedil;&otilde;es
+            </a>
+            <a href="{% url 'gestao_logs' %}" class="nav-item {% if url_name == 'gestao_logs' %}active{% endif %}">
+                <i class="fas fa-history"></i> Logs
+            </a>
+
+            {% elif url_name == 'dashboard_giros' or url_name == 'dashboard_assets' or url_name == 'dashboard_gamificacao' or url_name == 'dashboard_landing_config' or url_name == 'dashboard_banners' or url_name == 'dashboard_categorias' %}
             <!-- M&oacute;dulo: Opera&ccedil;&atilde;o -->
             <div class="sidebar-section-label">Opera&ccedil;&atilde;o</div>
             <a href="{% url 'dashboard_giros' %}" class="nav-item {% if url_name == 'dashboard_giros' %}active{% endif %}">
@@ -170,6 +191,17 @@
             </a>
             <a href="{% url 'dashboard_gamificacao' %}" class="nav-item {% if url_name == 'dashboard_gamificacao' %}active{% endif %}">
                 <i class="fas fa-gamepad"></i> Gamifica&ccedil;&atilde;o
+            </a>
+
+            <div class="sidebar-section-label" style="margin-top:16px;">Landing Page</div>
+            <a href="{% url 'dashboard_landing_config' %}" class="nav-item {% if url_name == 'dashboard_landing_config' %}active{% endif %}">
+                <i class="fas fa-globe"></i> Configura&ccedil;&atilde;o
+            </a>
+            <a href="{% url 'dashboard_banners' %}" class="nav-item {% if url_name == 'dashboard_banners' %}active{% endif %}">
+                <i class="fas fa-images"></i> Banners
+            </a>
+            <a href="{% url 'dashboard_categorias' %}" class="nav-item {% if url_name == 'dashboard_categorias' %}active{% endif %}">
+                <i class="fas fa-tags"></i> Categorias
             </a>
 
             {% elif url_name == 'documentacao' %}

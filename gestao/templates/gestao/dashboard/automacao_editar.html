@@ -1,0 +1,222 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}{{ automacao.nome }} — Automacao{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            {% if automacao.ativo %}<span class="badge badge-success">Ativo</span>
+            {% else %}<span class="badge" style="background:var(--border-light); color:var(--text-muted);">Pausado</span>{% endif %}
+            {% if automacao.status == 'erro' %}<span class="badge badge-danger">Erro</span>{% endif %}
+        </div>
+        <h1 class="page-title">{{ automacao.tool.nome }}</h1>
+        <p class="page-subtitle">{{ automacao.tool.descricao }}</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <form method="post" action="{% url 'gestao_automacao_executar' automacao.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary"><i class="fas fa-play" style="margin-right:4px;"></i>Executar Agora</button>
+        </form>
+        <form method="post" action="{% url 'gestao_automacao_toggle' automacao.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn {% if automacao.ativo %}btn-danger{% else %}btn-success{% endif %}">
+                <i class="fas fa-{% if automacao.ativo %}pause{% else %}play{% endif %}" style="margin-right:4px;"></i>{% if automacao.ativo %}Pausar{% else %}Ativar{% endif %}
+            </button>
+        </form>
+        <a href="{% url 'gestao_automacoes' %}" class="btn btn-secondary"><i class="fas fa-arrow-left" style="margin-right:4px;"></i>Voltar</a>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:20px;">
+    <!-- Coluna principal -->
+    <div>
+        <!-- Configuracao -->
+        <div class="card" style="padding:24px; margin-bottom:16px;">
+            <div class="card-title"><i class="fas fa-cog" style="margin-right:6px;"></i>Configuracao</div>
+            <form method="post">
+                {% csrf_token %}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Intervalo (horas)</label>
+                        <input type="number" name="intervalo_horas" value="{{ automacao.intervalo_horas }}" min="1" max="720" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Encaminhar resultado para</label>
+                        <select name="encaminhar_para" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                            <option value="">Nenhum &mdash; so executa e loga</option>
+                            {% for a in agentes %}
+                            <option value="{{ a.id }}" {% if automacao.encaminhar_para_id == a.id %}selected{% endif %}>{{ a.nome }} ({{ a.get_time_display }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="padding:8px 20px;">
+                    <i class="fas fa-save" style="margin-right:4px;"></i>Salvar
+                </button>
+            </form>
+        </div>
+
+        <!-- Ultimo resultado -->
+        {% if automacao.ultimo_resultado %}
+        <div class="card" style="padding:20px; margin-bottom:16px;">
+            <div class="card-title"><i class="fas fa-terminal" style="margin-right:6px;"></i>Ultimo Resultado da Tool</div>
+            <pre style="font-size:13px; background:var(--bg-main); padding:16px; border-radius:8px; overflow-x:auto; white-space:pre-wrap; margin:0;">{{ automacao.ultimo_resultado }}</pre>
+        </div>
+        {% endif %}
+
+        <!-- Analise do agente -->
+        {% if automacao.ultima_analise %}
+        <div class="card" style="padding:20px; margin-bottom:16px; border-left:4px solid {{ automacao.cor }};">
+            <div class="card-title">
+                {% if automacao.modo == 'agente' and automacao.agente %}
+                <i class="{{ automacao.agente.icone }}" style="color:{{ automacao.agente.cor }}; margin-right:6px;"></i>
+                Resultado do {{ automacao.agente.nome }}
+                {% elif automacao.encaminhar_para %}
+                <i class="{{ automacao.encaminhar_para.icone }}" style="color:{{ automacao.encaminhar_para.cor }}; margin-right:6px;"></i>
+                Analise do {{ automacao.encaminhar_para.nome }}
+                {% else %}
+                <i class="fas fa-robot" style="margin-right:6px;"></i> Analise
+                {% endif %}
+            </div>
+            <div class="md-render" style="font-size:14px; line-height:1.7;">{{ automacao.ultima_analise }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Historico de execucoes -->
+        {% if logs %}
+        <div class="card" style="padding:20px; margin-bottom:16px;">
+            <div class="card-title"><i class="fas fa-history" style="margin-right:6px;"></i>Historico de Execucoes</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Agente</th>
+                        <th>Status</th>
+                        <th>Resultado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="white-space:nowrap;">{{ log.data_criacao|date:"d/m/Y H:i" }}</td>
+                        <td>{{ log.agente.nome|default:"-" }}</td>
+                        <td>
+                            {% if log.sucesso %}<span class="badge badge-success">OK</span>
+                            {% else %}<span class="badge badge-danger">Erro</span>{% endif %}
+                        </td>
+                        <td style="font-size:12px; max-width:400px; overflow:hidden; text-overflow:ellipsis;">{{ log.resultado|truncatechars:120 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Alertas gerados -->
+        {% if alertas %}
+        <div class="card" style="padding:20px; margin-bottom:16px;">
+            <div class="card-title"><i class="fas fa-bell" style="color:var(--warning); margin-right:6px;"></i>Alertas Gerados</div>
+            {% for a in alertas %}
+            <div style="padding:10px 0; {% if not forloop.last %}border-bottom:1px solid var(--border-light);{% endif %}">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    {% if a.severidade == 'critico' %}<span class="badge badge-danger">Critico</span>
+                    {% elif a.severidade == 'aviso' %}<span class="badge badge-warning">Aviso</span>
+                    {% else %}<span class="badge badge-info">Info</span>{% endif %}
+                    <strong style="font-size:13px;">{{ a.titulo }}</strong>
+                    <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">{{ a.data_criacao|date:"d/m H:i" }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Propostas geradas -->
+        {% if propostas %}
+        <div class="card" style="padding:20px;">
+            <div class="card-title"><i class="fas fa-clipboard-check" style="color:var(--primary); margin-right:6px;"></i>Propostas Geradas</div>
+            {% for p in propostas %}
+            <div style="padding:10px 0; {% if not forloop.last %}border-bottom:1px solid var(--border-light);{% endif %}">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    {% if p.status == 'pendente' %}<span class="badge" style="background:#fef3c7; color:#92400e;">Pendente</span>
+                    {% elif p.status == 'executada' %}<span class="badge badge-success">Executada</span>
+                    {% elif p.status == 'rejeitada' %}<span class="badge badge-danger">Rejeitada</span>{% endif %}
+                    <a href="{% url 'gestao_proposta_detalhe' p.id %}" style="font-size:13px; font-weight:600; color:var(--text-main);">{{ p.titulo }}</a>
+                    <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">{{ p.data_criacao|date:"d/m H:i" }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+        <div class="card" style="padding:20px; margin-bottom:16px;">
+            <div class="card-title">Detalhes</div>
+            <div style="display:flex; flex-direction:column; gap:14px; font-size:13px;">
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Tool</div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <i class="{{ automacao.tool.icone }}" style="color:var(--primary);"></i>
+                        <strong>{{ automacao.tool.nome }}</strong>
+                    </div>
+                    <small style="color:var(--text-muted);">{{ automacao.tool.slug }}</small>
+                </div>
+
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Tipo da Tool</div>
+                    <div>{{ automacao.tool.get_tipo_display }}</div>
+                </div>
+
+                {% if automacao.encaminhar_para %}
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Encaminha para</div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <i class="{{ automacao.encaminhar_para.icone }}" style="color:{{ automacao.encaminhar_para.cor }};"></i>
+                        <strong>{{ automacao.encaminhar_para.nome }}</strong>
+                    </div>
+                    <small style="color:var(--text-muted);">{{ automacao.encaminhar_para.descricao }}</small>
+                </div>
+                {% else %}
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Encaminha para</div>
+                    <div style="color:var(--text-muted);">Nenhum &mdash; so executa e loga</div>
+                </div>
+                {% endif %}
+
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Intervalo</div>
+                    <div>A cada <strong>{{ automacao.intervalo_horas }}h</strong></div>
+                </div>
+
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Execucoes</div>
+                    <div><strong>{{ automacao.total_execucoes }}</strong> total{% if automacao.total_erros > 0 %} &middot; <span style="color:var(--danger);">{{ automacao.total_erros }} erros</span>{% endif %}</div>
+                </div>
+
+                {% if automacao.ultima_execucao %}
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Ultima execucao</div>
+                    <div>{{ automacao.ultima_execucao|date:"d/m/Y H:i" }}</div>
+                    <small style="color:var(--text-muted);">{{ automacao.ultima_execucao|timesince }} atras</small>
+                </div>
+                {% endif %}
+
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Criada em</div>
+                    <div>{{ automacao.data_criacao|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+<script>
+document.querySelectorAll('.md-render').forEach(function(el) {
+    el.innerHTML = DOMPurify.sanitize(marked.parse(el.textContent));
+});
+</script>
+{% endblock %}

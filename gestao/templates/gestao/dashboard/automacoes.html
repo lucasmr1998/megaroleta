@@ -1,0 +1,330 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Automações — Gestão{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+    <div>
+        <h1 class="page-title" style="margin-bottom:4px;">Automa&ccedil;&otilde;es</h1>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">{{ automacoes.paginator.count }} automa&ccedil;&atilde;o{{ automacoes.paginator.count|pluralize:"ões" }} &mdash; tarefas que rodam automaticamente em intervalos definidos</p>
+    </div>
+    <button onclick="document.getElementById('modal-criar').style.display='flex'" class="btn btn-primary"><i class="fas fa-plus"></i> Nova Automa&ccedil;&atilde;o</button>
+</div>
+
+<!-- Toolbar: busca -->
+<div class="card" style="padding:12px 16px; margin-bottom:12px;">
+    <form method="get" style="display:flex; gap:10px; align-items:center;">
+        {% if modo_filtro %}<input type="hidden" name="modo" value="{{ modo_filtro }}">{% endif %}
+        <div style="position:relative; flex:1; max-width:320px;">
+            <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:12px;"></i>
+            <input type="text" name="q" value="{{ busca }}" placeholder="Buscar automa&ccedil;&otilde;es..."
+                   style="width:100%; padding:7px 12px 7px 30px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none;">
+        </div>
+        {% if busca %}
+        <a href="?{% if modo_filtro %}modo={{ modo_filtro }}{% endif %}" style="font-size:12px; color:var(--text-muted); text-decoration:none;">&times; Limpar</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Filtros por modo -->
+<div style="display:flex; gap:6px; margin-bottom:20px; overflow-x:auto; padding-bottom:4px;">
+    <a href="{% url 'gestao_automacoes' %}{% if busca %}?q={{ busca }}{% endif %}"
+       class="doc-filter {% if not modo_filtro %}active{% endif %}">
+        Todas <span class="doc-filter-count">{{ total_todas }}</span>
+    </a>
+    <a href="?modo=tool{% if busca %}&amp;q={{ busca }}{% endif %}"
+       class="doc-filter {% if modo_filtro == 'tool' %}active{% endif %}">
+        <i class="fas fa-wrench" style="font-size:10px; color:#f59e0b;"></i> Tool <span class="doc-filter-count">{{ total_tool }}</span>
+    </a>
+    <a href="?modo=agente{% if busca %}&amp;q={{ busca }}{% endif %}"
+       class="doc-filter {% if modo_filtro == 'agente' %}active{% endif %}">
+        <i class="fas fa-robot" style="font-size:10px; color:#4338ca;"></i> Agente <span class="doc-filter-count">{{ total_agente }}</span>
+    </a>
+</div>
+
+{% if busca %}
+<div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+    {{ automacoes.paginator.count }} resultado{{ automacoes.paginator.count|pluralize:"s" }} para &ldquo;<strong>{{ busca }}</strong>&rdquo;
+    {% if modo_filtro %} em <strong>{{ modo_filtro }}</strong>{% endif %}
+</div>
+{% endif %}
+
+{% if messages %}
+<div style="margin-bottom:16px;">
+{% for message in messages %}
+<div style="padding:12px 16px; border-radius:8px; font-size:13px; font-weight:600; margin-bottom:8px; {% if message.tags == 'success' %}background:#d1fae5; color:#059669;{% elif message.tags == 'error' %}background:#fee2e2; color:#ef4444;{% else %}background:#e0e7ff; color:#3b82f6;{% endif %}">
+    {{ message }}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<!-- Tabela de automações -->
+<div class="card" style="overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr style="background:var(--bg-page);">
+                <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Automa&ccedil;&atilde;o</th>
+                <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:100px;">Modo</th>
+                <th style="padding:12px 16px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:80px;">Intervalo</th>
+                <th style="padding:12px 16px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:70px;">Status</th>
+                <th style="padding:12px 16px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:90px;">Execu&ccedil;&otilde;es</th>
+                <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:130px;">&Uacute;ltima</th>
+                <th style="padding:12px 16px; text-align:center; width:180px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for auto in automacoes %}
+            <tr class="doc-row" style="{% if not auto.ativo %}opacity:0.5;{% endif %}">
+                <td style="padding:14px 16px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+                            {% if auto.modo == 'agente' %}background:#e0e7ff;{% else %}background:#fef3c7;{% endif %}">
+                            {% if auto.modo == 'agente' %}
+                            <i class="fas fa-robot" style="color:#4338ca; font-size:14px;"></i>
+                            {% else %}
+                            <i class="{{ auto.tool.icone|default:'fas fa-bolt' }}" style="color:#f59e0b; font-size:14px;"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:var(--text-main); margin-bottom:2px;">{{ auto.nome }}</div>
+                            <div style="font-size:12px; color:var(--text-muted); line-height:1.3;">
+                                {% if auto.modo == 'agente' and auto.agente %}
+                                <i class="fas fa-robot" style="font-size:10px;"></i> {{ auto.agente.nome }}
+                                {% elif auto.tool %}
+                                <i class="fas fa-wrench" style="font-size:10px;"></i> {{ auto.tool.slug }}
+                                {% endif %}
+                                {% if auto.encaminhar_para %}
+                                &rarr; <i class="fas fa-user" style="font-size:10px;"></i> {{ auto.encaminhar_para.nome }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding:14px 16px;">
+                    {% if auto.modo == 'agente' %}
+                    <span class="tool-tipo" style="background:#e0e7ff; color:#4338ca;">
+                        <i class="fas fa-robot"></i> Agente
+                    </span>
+                    {% else %}
+                    <span class="tool-tipo tool-tipo-exec">
+                        <i class="fas fa-bolt"></i> Tool
+                    </span>
+                    {% endif %}
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    <span style="font-size:13px; font-weight:600; color:var(--text-main);">{{ auto.intervalo_horas }}h</span>
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    {% if auto.ativo %}
+                    <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#16a34a;">
+                        <i class="fas fa-circle" style="font-size:6px;"></i> Ativa
+                    </span>
+                    {% else %}
+                    <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#9ca3af;">
+                        <i class="fas fa-circle" style="font-size:6px;"></i> Pausada
+                    </span>
+                    {% endif %}
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    {% if auto.total_execucoes %}
+                    <span style="font-size:13px; font-weight:700; color:var(--text-main);">{{ auto.total_execucoes }}</span>
+                    {% if auto.total_erros > 0 %}
+                    <span style="font-size:10px; color:#dc2626; margin-left:2px;">({{ auto.total_erros }} erro{{ auto.total_erros|pluralize:"s" }})</span>
+                    {% endif %}
+                    {% else %}
+                    <span style="font-size:12px; color:var(--text-muted);">&mdash;</span>
+                    {% endif %}
+                </td>
+                <td style="padding:14px 16px; text-align:right;">
+                    {% if auto.ultima_execucao %}
+                    <span style="font-size:11px; color:var(--text-muted);">{{ auto.ultima_execucao|timesince }} atr&aacute;s</span>
+                    {% else %}
+                    <span style="font-size:11px; color:var(--text-muted);">Nunca</span>
+                    {% endif %}
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    <div style="display:flex; gap:4px; justify-content:center;">
+                        <a href="{% url 'gestao_automacao_editar' auto.id %}" class="doc-action" title="Detalhes">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <form method="post" action="{% url 'gestao_automacao_executar' auto.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="doc-action" title="Executar agora" style="color:#3b82f6;">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'gestao_automacao_toggle' auto.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="doc-action" title="{{ auto.ativo|yesno:'Pausar,Ativar' }}">
+                                <i class="fas fa-{{ auto.ativo|yesno:'pause,play' }}"></i>
+                            </button>
+                        </form>
+                        <form method="post" style="display:inline;" onsubmit="return confirm('Excluir esta automação?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="excluir">
+                            <input type="hidden" name="automacao_id" value="{{ auto.id }}">
+                            <button type="submit" class="doc-action doc-action-danger" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="padding:60px 16px; text-align:center;">
+                    <i class="fas fa-bolt" style="font-size:32px; color:#e5e7eb; margin-bottom:12px; display:block;"></i>
+                    <div style="font-size:14px; color:var(--text-muted);">Nenhuma automa&ccedil;&atilde;o configurada</div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if automacoes.has_other_pages %}
+<div style="display:flex; justify-content:center; align-items:center; gap:4px; margin-top:16px; padding:12px 0;">
+    {% if automacoes.has_previous %}
+    <a href="?page={{ automacoes.previous_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if modo_filtro %}&modo={{ modo_filtro }}{% endif %}" class="page-btn">&laquo;</a>
+    {% endif %}
+    {% for num in automacoes.paginator.page_range %}
+        {% if automacoes.number == num %}
+        <span class="page-btn active">{{ num }}</span>
+        {% elif num > automacoes.number|add:'-3' and num < automacoes.number|add:'3' %}
+        <a href="?page={{ num }}{% if busca %}&q={{ busca }}{% endif %}{% if modo_filtro %}&modo={{ modo_filtro }}{% endif %}" class="page-btn">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if automacoes.has_next %}
+    <a href="?page={{ automacoes.next_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if modo_filtro %}&modo={{ modo_filtro }}{% endif %}" class="page-btn">&raquo;</a>
+    {% endif %}
+    <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ automacoes.paginator.count }} total</span>
+</div>
+{% endif %}
+
+<!-- Modal Criar Automação -->
+<div id="modal-criar" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:16px; padding:32px; width:100%; max-width:480px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+            <h3 style="font-size:18px; font-weight:800; color:var(--text-main); margin:0;">
+                <i class="fas fa-plus" style="color:var(--primary);"></i> Nova Automa&ccedil;&atilde;o
+            </h3>
+            <button onclick="document.getElementById('modal-criar').style.display='none'" style="background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">&times;</button>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="criar">
+
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Modo</label>
+                <select name="modo" id="modo-select" onchange="toggleModo()" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                    <option value="tool">Executar Tool</option>
+                    <option value="agente">Acordar Agente</option>
+                </select>
+            </div>
+
+            <div id="campo-tool" style="margin-bottom:16px;">
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Tool a executar</label>
+                <select name="tool_id" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                    <option value="">Selecione...</option>
+                    {% for t in tools %}
+                    <option value="{{ t.id }}">{{ t.nome }} &mdash; {{ t.descricao|truncatewords:8 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="campo-agente" style="margin-bottom:16px; display:none;">
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Agente que vai trabalhar</label>
+                <select name="agente_id" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                    <option value="">Selecione...</option>
+                    {% for a in agentes %}
+                    <option value="{{ a.id }}">{{ a.nome }} ({{ a.get_time_display }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="campo-encaminhar" style="margin-bottom:16px;">
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Encaminhar resultado para (opcional)</label>
+                <select name="encaminhar_para" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                    <option value="">Nenhum &mdash; s&oacute; executa e loga</option>
+                    {% for a in agentes %}
+                    <option value="{{ a.id }}">{{ a.nome }} ({{ a.get_time_display }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom:24px;">
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Intervalo (horas)</label>
+                <input type="number" name="intervalo_horas" value="24" min="1" max="720" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <script>
+            function toggleModo() {
+                var modo = document.getElementById('modo-select').value;
+                document.getElementById('campo-tool').style.display = modo === 'tool' ? 'block' : 'none';
+                document.getElementById('campo-agente').style.display = modo === 'agente' ? 'block' : 'none';
+                document.getElementById('campo-encaminhar').style.display = modo === 'tool' ? 'block' : 'none';
+            }
+            </script>
+
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('modal-criar').style.display='none'" style="background:var(--bg-page); color:var(--text-muted); border:none; padding:10px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-bolt"></i> Criar Automa&ccedil;&atilde;o
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.doc-filter {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:6px 14px; border-radius:8px;
+    font-size:12px; font-weight:600; color:var(--text-muted);
+    text-decoration:none; transition:all 0.15s;
+    border:1px solid var(--border-light);
+    white-space:nowrap; flex-shrink:0;
+    background:white;
+}
+.doc-filter:hover { background:var(--bg-page); color:var(--text-secondary); border-color:var(--border); }
+.doc-filter.active { background:var(--primary); color:white; border-color:var(--primary); }
+.doc-filter-count {
+    font-size:10px; font-weight:700; min-width:16px; text-align:center;
+    background:rgba(0,0,0,0.06); border-radius:10px; padding:1px 5px;
+}
+.doc-filter.active .doc-filter-count { background:rgba(255,255,255,0.25); }
+.doc-row { border-bottom:1px solid var(--border-light); transition:background 0.1s; }
+.doc-row:hover { background:var(--bg-page); }
+.doc-row:last-child { border-bottom:none; }
+.tool-tipo {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:3px 10px; border-radius:20px;
+    font-size:11px; font-weight:600; white-space:nowrap;
+}
+.tool-tipo-exec { background:#fef3c7; color:#b45309; }
+.doc-action {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:30px; height:30px; border-radius:8px;
+    font-size:12px; color:var(--text-muted); text-decoration:none;
+    border:1px solid var(--border-light); background:white;
+    cursor:pointer; transition:all 0.15s;
+}
+.doc-action:hover { background:var(--bg-page); color:var(--primary); border-color:var(--primary); }
+.doc-action-danger { border:none; background:transparent; }
+.doc-action-danger:hover { background:#fee2e2; color:#dc2626; }
+.page-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:32px; height:32px; padding:0 8px;
+    border-radius:8px; font-size:13px; font-weight:600;
+    color:var(--text-muted); text-decoration:none;
+    border:1px solid var(--border-light); background:white;
+    transition:all 0.15s; cursor:pointer;
+}
+.page-btn:hover { background:var(--bg-page); color:var(--primary); border-color:var(--primary); }
+.page-btn.active { background:var(--primary); color:white; border-color:var(--primary); cursor:default; }
+</style>
+{% endblock %}

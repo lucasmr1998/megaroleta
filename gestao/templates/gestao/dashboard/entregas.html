@@ -3,25 +3,28 @@
 {% block title %}Entregas dos Agentes{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">Entregas dos Agentes</h1>
-    <p class="page-subtitle">Documentos de trabalho produzidos pelos agentes — planejamentos, an&aacute;lises, specs.</p>
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1 class="page-title">Entregas dos Agentes</h1>
+        <p class="page-subtitle">Documentos de trabalho produzidos pelos agentes.</p>
+    </div>
+    <a href="{% url 'gestao_entrega_criar' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Nova Entrega</a>
 </div>
 
 <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(350px, 1fr)); gap:16px;">
     {% for e in entregas %}
-    <a href="{% url 'gestao_entrega_detalhe' e.agente_pasta e.arquivo %}" style="text-decoration:none; color:inherit;">
+    <a href="{% url 'gestao_entrega_detalhe' e.id %}" style="text-decoration:none; color:inherit;">
         <div class="card" style="padding:20px; transition:box-shadow 0.2s; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
                 <div style="width:40px; height:40px; border-radius:10px; background:var(--primary-light); display:flex; align-items:center; justify-content:center;">
                     <i class="fas fa-file-alt" style="color:var(--primary); font-size:16px;"></i>
                 </div>
                 <div>
-                    <span class="badge badge-info" style="margin-bottom:4px;">{{ e.agente }}</span>
+                    <span class="badge badge-info" style="margin-bottom:4px;">{{ e.agente.nome|default:"Sem agente" }}</span>
                     <div style="font-size:15px; font-weight:700; color:var(--text-main);">{{ e.titulo }}</div>
                 </div>
             </div>
-            <div style="font-size:12px; color:var(--text-muted);">{{ e.nome }}</div>
+            <div style="font-size:12px; color:var(--text-muted);">{{ e.data_atualizacao|date:"d/m/Y H:i" }}</div>
         </div>
     </a>
     {% empty %}

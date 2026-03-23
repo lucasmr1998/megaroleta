@@ -80,6 +80,22 @@
 - [x] Editor de entregas com preview em tempo real
 - [x] Botao "Salvar Sessao" no chat individual
 
+### Fase 10 — Hardening e Seguranca (marco/2026)
+- [x] Migracao de credenciais hardcoded para .env (DB, Hubsoft, OpenAI, SECRET_KEY)
+- [x] DEBUG e ALLOWED_HOSTS controlados via .env
+- [x] Remocao de logs debug com dados sensiveis (CPF, telefone)
+- [x] select_for_update + F() em atribuir_pontos e validar_cupom
+- [x] @transaction.atomic em CRUD de parceiros, cupons e carteirinhas
+- [x] Eliminacao de queries N+1 em roleta_init_dados, membro_missoes, membro_indicar, membro_perfil
+- [x] 17 db_index adicionados em campos filtrados frequentemente
+- [x] Cache Django para dados Hubsoft (1 hora, substituiu cache estatico)
+- [x] Limite de contexto IA (20 projetos, 30 tarefas/projeto, textos truncados)
+- [x] Sanitizacao markdown: bleach (backend) + DOMPurify (frontend)
+- [x] Remocao de @csrf_exempt dos endpoints de chat
+- [x] Logging estruturado (substituiu print por logging.getLogger)
+- [x] Correcao URL duplicada roleta.urls no root (redirect para /roleta/)
+- [x] requirements.txt atualizado (python-dotenv, openai, requests, bleach)
+
 ---
 
 ## Plano de Lancamento — Floriano (EM ANDAMENTO)
@@ -118,7 +134,7 @@
 
 ## Proximas Fases (Produto)
 
-### Fase 9 — Loja de Pontos
+### Fase 11 — Loja de Pontos
 - [ ] Criar app `loja` separado
 - [ ] Modelo ItemLoja generico (cupom, brinde, produto)
 - [ ] Categorias de itens
@@ -126,13 +142,13 @@
 - [ ] Resgate unificado
 - [ ] Dashboard admin da loja
 
-### Fase 10 — Melhorias de UX
+### Fase 12 — Melhorias de UX
 - [ ] Notificacoes (novo cupom disponivel, indicacao convertida)
 - [ ] Historico de giros do membro na area do membro
 - [ ] QR Code real na carteirinha (em vez de icone)
 - [ ] Compartilhamento de premios ganhos
 
-### Fase 11 — Inteligencia e Automacao
+### Fase 13 — Inteligencia e Automacao
 - [ ] Relatorio de ROI por parceiro
 - [ ] Segmentacao de membros (por cidade, nivel, engajamento)
 - [ ] Campanhas direcionadas (cupons por segmento)

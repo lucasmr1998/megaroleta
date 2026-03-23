@@ -7,9 +7,9 @@ from django.db.models import Count, Q, Sum, Avg, F
 from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
 from django.http import HttpResponse
 from django.core.paginator import Paginator
-from roleta.models import PremioRoleta, ParticipanteRoleta, RouletteAsset, RoletaConfig, MembroClube, NivelClube, RegraPontuacao, ExtratoPontuacao, Cidade
+from roleta.models import PremioRoleta, ParticipanteRoleta, RouletteAsset, RoletaConfig, MembroClube, NivelClube, RegraPontuacao, ExtratoPontuacao, Cidade, BannerClube, LandingConfig
 from indicacoes.models import Indicacao
-from parceiros.models import Parceiro, CupomDesconto, ResgateCupom
+from parceiros.models import Parceiro, CupomDesconto, ResgateCupom, CategoriaParceiro
 import csv
 import json
 from datetime import datetime, timedelta
@@ -910,3 +910,115 @@ def dashboard_relatorios_parceiros(request):
         'chart_parceiros_data': json.dumps(parceiros_resgates_data),
     }
     return render(request, 'roleta/dashboard/relatorios_parceiros.html', context)
+
+
+# ============================================================
+# OPERACAO: Landing Page, Banners, Categorias
+# ============================================================
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def dashboard_landing_config(request):
+    """Editar configuracao da landing page publica."""
+    config, _ = LandingConfig.objects.get_or_create(id=1)
+
+    if request.method == 'POST':
+        config.titulo = request.POST.get('titulo', config.titulo).strip()
+        config.subtitulo = request.POST.get('subtitulo', config.subtitulo).strip()
+        config.whatsapp_numero = request.POST.get('whatsapp_numero', '').strip()
+        config.whatsapp_mensagem = request.POST.get('whatsapp_mensagem', '').strip()
+        config.texto_como_funciona = request.POST.get('texto_como_funciona', '').strip()
+        config.texto_rodape = request.POST.get('texto_rodape', '').strip()
+        config.cor_primaria = request.POST.get('cor_primaria', config.cor_primaria).strip()
+        config.cor_secundaria = request.POST.get('cor_secundaria', config.cor_secundaria).strip()
+        config.ativo = request.POST.get('ativo') == 'on'
+        if request.FILES.get('logo'):
+            config.logo = request.FILES['logo']
+        config.save()
+        messages.success(request, 'Configuracao da landing page salva.')
+        return redirect('dashboard_landing_config')
+
+    return render(request, 'roleta/dashboard/landing_config.html', {'config': config})
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def dashboard_banners(request):
+    """CRUD de banners da landing page."""
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'criar':
+            if request.FILES.get('imagem'):
+                BannerClube.objects.create(
+                    titulo=request.POST.get('titulo', '').strip(),
+                    imagem=request.FILES['imagem'],
+                    link=request.POST.get('link', '').strip(),
+                    ordem=int(request.POST.get('ordem', 0) or 0),
+                    ativo=request.POST.get('ativo') == 'on',
+                )
+                messages.success(request, 'Banner criado.')
+            else:
+                messages.error(request, 'Selecione uma imagem.')
+
+        elif action == 'editar':
+            banner = get_object_or_404(BannerClube, id=request.POST.get('banner_id'))
+            banner.titulo = request.POST.get('titulo', '').strip()
+            banner.link = request.POST.get('link', '').strip()
+            banner.ordem = int(request.POST.get('ordem', 0) or 0)
+            banner.ativo = request.POST.get('ativo') == 'on'
+            if request.FILES.get('imagem'):
+                banner.imagem = request.FILES['imagem']
+            banner.save()
+            messages.success(request, 'Banner atualizado.')
+
+        elif action == 'excluir':
+            get_object_or_404(BannerClube, id=request.POST.get('banner_id')).delete()
+            messages.success(request, 'Banner excluido.')
+
+        return redirect('dashboard_banners')
+
+    banners = BannerClube.objects.all().order_by('ordem')
+    return render(request, 'roleta/dashboard/banners.html', {'banners': banners})
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def dashboard_categorias(request):
+    """CRUD de categorias de parceiros."""
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'criar':
+            nome = request.POST.get('nome', '').strip()
+            slug = request.POST.get('slug', '').strip().lower().replace(' ', '-')
+            if nome and slug:
+                CategoriaParceiro.objects.create(
+                    nome=nome,
+                    slug=slug,
+                    icone=request.POST.get('icone', 'fas fa-tag').strip(),
+                    ordem=int(request.POST.get('ordem', 0) or 0),
+                    ativo=request.POST.get('ativo') == 'on',
+                )
+                messages.success(request, f'Categoria "{nome}" criada.')
+            else:
+                messages.error(request, 'Nome e slug sao obrigatorios.')
+
+        elif action == 'editar':
+            cat = get_object_or_404(CategoriaParceiro, id=request.POST.get('categoria_id'))
+            cat.nome = request.POST.get('nome', cat.nome).strip()
+            cat.slug = request.POST.get('slug', cat.slug).strip().lower().replace(' ', '-')
+            cat.icone = request.POST.get('icone', cat.icone).strip()
+            cat.ordem = int(request.POST.get('ordem', 0) or 0)
+            cat.ativo = request.POST.get('ativo') == 'on'
+            cat.save()
+            messages.success(request, f'Categoria "{cat.nome}" atualizada.')
+
+        elif action == 'excluir':
+            get_object_or_404(CategoriaParceiro, id=request.POST.get('categoria_id')).delete()
+            messages.success(request, 'Categoria excluida.')
+
+        return redirect('dashboard_categorias')
+
+    categorias = CategoriaParceiro.objects.all().order_by('ordem', 'nome')
+    return render(request, 'roleta/dashboard/categorias.html', {'categorias': categorias})

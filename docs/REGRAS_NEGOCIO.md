@@ -89,7 +89,11 @@
 
 ## Seguranca
 
-- **Credenciais em variaveis de ambiente:** Senhas, SECRET_KEY e tokens NUNCA devem estar hardcoded (meta — migrar para .env)
+- **Credenciais em variaveis de ambiente:** Senhas, SECRET_KEY e tokens NUNCA devem estar hardcoded — todas ja migradas para `.env` ✅
+- **Logging seguro:** NUNCA usar `print()` ou gravar dados sensiveis em arquivo. Usar `logging.getLogger(__name__)`
+- **Sanitizacao obrigatoria:** Markdown renderizado deve passar por `bleach.clean()` (backend) e `DOMPurify.sanitize()` (frontend)
+- **Sem csrf_exempt:** NUNCA usar `@csrf_exempt` — templates enviam `X-CSRFToken` nos headers AJAX
+- **Cache Hubsoft:** Dados do Hubsoft cacheados via Django cache framework (1 hora). NUNCA usar variaveis estaticas de classe como cache
 - **CSRF obrigatorio:** Todos os formularios POST devem incluir `{% csrf_token %}`
 - **Login required:** Todas as views do admin exigem `@login_required` + `@user_passes_test(is_staff)`
 - **select_for_update:** Operacoes que modificam saldo ou estoque devem usar lock pessimista

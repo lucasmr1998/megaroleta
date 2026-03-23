@@ -1,0 +1,194 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Agentes IA{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+    <div>
+        <h1 class="page-title" style="margin-bottom:4px;">Agentes IA</h1>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">{{ total_agentes }} agente{{ total_agentes|pluralize:"s" }} &mdash; organizado{{ total_agentes|pluralize:"s" }} por time</p>
+    </div>
+    <a href="{% url 'gestao_agente_criar' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Novo Agente</a>
+</div>
+
+<!-- Toolbar: busca -->
+<div class="card" style="padding:12px 16px; margin-bottom:12px;">
+    <form method="get" style="display:flex; gap:10px; align-items:center;">
+        {% if time_filtro %}<input type="hidden" name="time" value="{{ time_filtro }}">{% endif %}
+        <div style="position:relative; flex:1; max-width:320px;">
+            <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:12px;"></i>
+            <input type="text" name="q" value="{{ busca }}" placeholder="Buscar agentes..."
+                   style="width:100%; padding:7px 12px 7px 30px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none;">
+        </div>
+        {% if busca %}
+        <a href="?{% if time_filtro %}time={{ time_filtro }}{% endif %}" style="font-size:12px; color:var(--text-muted); text-decoration:none;">&times; Limpar</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Filtros por time -->
+<div style="display:flex; gap:6px; margin-bottom:20px; overflow-x:auto; padding-bottom:4px;">
+    <a href="{% url 'gestao_agentes' %}{% if busca %}?q={{ busca }}{% endif %}"
+       class="doc-filter {% if not time_filtro %}active{% endif %}">
+        Todos <span class="doc-filter-count">{{ total_agentes }}</span>
+    </a>
+    {% for t in times %}
+    <a href="?time={{ t.valor }}{% if busca %}&amp;q={{ busca }}{% endif %}"
+       class="doc-filter {% if time_filtro == t.valor %}active{% endif %}">
+        {{ t.label }} <span class="doc-filter-count">{{ t.count }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+{% if busca %}
+<div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+    {{ agentes_lista.paginator.count }} resultado{{ agentes_lista.paginator.count|pluralize:"s" }} para &ldquo;<strong>{{ busca }}</strong>&rdquo;
+    {% if time_filtro %} em <strong>{{ time_filtro }}</strong>{% endif %}
+</div>
+{% endif %}
+
+<!-- Tabela de agentes -->
+<div class="card" style="overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr style="background:var(--bg-page);">
+                <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Agente</th>
+                <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:130px;">Time</th>
+                <th style="padding:12px 16px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:110px;">Modelo</th>
+                <th style="padding:12px 16px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:70px;">Status</th>
+                <th style="padding:12px 16px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:80px;">Prompt</th>
+                <th style="padding:12px 16px; text-align:center; width:140px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in agentes_lista %}
+            <tr class="doc-row" style="{% if not a.ativo %}opacity:0.5;{% endif %}">
+                <td style="padding:14px 16px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:36px; height:36px; border-radius:10px; background:{{ a.cor }}20; display:flex; align-items:center; justify-content:center;">
+                            <i class="{{ a.icone }}" style="color:{{ a.cor }}; font-size:14px;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:var(--text-main); margin-bottom:2px;">{{ a.nome }}</div>
+                            <div style="font-size:12px; color:var(--text-muted); line-height:1.3;">{{ a.descricao|truncatewords:12 }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding:14px 16px;">
+                    <span class="tool-tipo" style="background:{{ a.cor }}15; color:{{ a.cor }};">
+                        {{ a.get_time_display }}
+                    </span>
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">{{ a.modelo }}</span>
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    {% if a.ativo %}
+                    <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#16a34a;">
+                        <i class="fas fa-circle" style="font-size:6px;"></i> Ativo
+                    </span>
+                    {% else %}
+                    <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#9ca3af;">
+                        <i class="fas fa-circle" style="font-size:6px;"></i> Inativo
+                    </span>
+                    {% endif %}
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    <span style="font-size:12px; color:var(--text-muted);">{{ a.prompt|length }} chars</span>
+                </td>
+                <td style="padding:14px 16px; text-align:center;">
+                    <div style="display:flex; gap:4px; justify-content:center;">
+                        <a href="{% url 'gestao_agente_editar' a.id %}" class="doc-action" title="Editar">
+                            <i class="fas fa-pen"></i>
+                        </a>
+                        <a href="{% url 'sala_chat' a.slug %}" class="doc-action" title="Conversar" style="color:var(--primary);">
+                            <i class="fas fa-comments"></i>
+                        </a>
+                        <form method="post" action="{% url 'gestao_agente_toggle' a.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="doc-action" title="{{ a.ativo|yesno:'Desativar,Ativar' }}">
+                                <i class="fas fa-{{ a.ativo|yesno:'pause,play' }}"></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="padding:60px 16px; text-align:center;">
+                    <i class="fas fa-robot" style="font-size:32px; color:#e5e7eb; margin-bottom:12px; display:block;"></i>
+                    <div style="font-size:14px; color:var(--text-muted);">
+                        {% if busca %}Nenhum agente encontrado para &ldquo;{{ busca }}&rdquo;{% else %}Nenhum agente cadastrado{% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if agentes_lista.has_other_pages %}
+<div style="display:flex; justify-content:center; align-items:center; gap:4px; margin-top:16px; padding:12px 0;">
+    {% if agentes_lista.has_previous %}
+    <a href="?page={{ agentes_lista.previous_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if time_filtro %}&time={{ time_filtro }}{% endif %}" class="page-btn">&laquo;</a>
+    {% endif %}
+    {% for num in agentes_lista.paginator.page_range %}
+        {% if agentes_lista.number == num %}
+        <span class="page-btn active">{{ num }}</span>
+        {% elif num > agentes_lista.number|add:'-3' and num < agentes_lista.number|add:'3' %}
+        <a href="?page={{ num }}{% if busca %}&q={{ busca }}{% endif %}{% if time_filtro %}&time={{ time_filtro }}{% endif %}" class="page-btn">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if agentes_lista.has_next %}
+    <a href="?page={{ agentes_lista.next_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if time_filtro %}&time={{ time_filtro }}{% endif %}" class="page-btn">&raquo;</a>
+    {% endif %}
+    <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ agentes_lista.paginator.count }} total</span>
+</div>
+{% endif %}
+
+<style>
+.doc-filter {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:6px 14px; border-radius:8px;
+    font-size:12px; font-weight:600; color:var(--text-muted);
+    text-decoration:none; transition:all 0.15s;
+    border:1px solid var(--border-light);
+    white-space:nowrap; flex-shrink:0;
+    background:white;
+}
+.doc-filter:hover { background:var(--bg-page); color:var(--text-secondary); border-color:var(--border); }
+.doc-filter.active { background:var(--primary); color:white; border-color:var(--primary); }
+.doc-filter-count {
+    font-size:10px; font-weight:700; min-width:16px; text-align:center;
+    background:rgba(0,0,0,0.06); border-radius:10px; padding:1px 5px;
+}
+.doc-filter.active .doc-filter-count { background:rgba(255,255,255,0.25); }
+.doc-row { border-bottom:1px solid var(--border-light); transition:background 0.1s; }
+.doc-row:hover { background:var(--bg-page); }
+.doc-row:last-child { border-bottom:none; }
+.tool-tipo {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:3px 10px; border-radius:20px;
+    font-size:11px; font-weight:600; white-space:nowrap;
+}
+.doc-action {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:30px; height:30px; border-radius:8px;
+    font-size:12px; color:var(--text-muted); text-decoration:none;
+    border:1px solid var(--border-light); background:white;
+    cursor:pointer; transition:all 0.15s;
+}
+.doc-action:hover { background:var(--bg-page); color:var(--primary); border-color:var(--primary); }
+.page-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:32px; height:32px; padding:0 8px;
+    border-radius:8px; font-size:13px; font-weight:600;
+    color:var(--text-muted); text-decoration:none;
+    border:1px solid var(--border-light); background:white;
+    transition:all 0.15s; cursor:pointer;
+}
+.page-btn:hover { background:var(--bg-page); color:var(--primary); border-color:var(--primary); }
+.page-btn.active { background:var(--primary); color:white; border-color:var(--primary); cursor:default; }
+</style>
+{% endblock %}

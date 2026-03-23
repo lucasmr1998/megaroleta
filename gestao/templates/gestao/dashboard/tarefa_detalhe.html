@@ -1,0 +1,224 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}{{ tarefa.titulo }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        {% if tarefa.status == 'rascunho' %}
+            <span style="background:#fbbf24; color:#000; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">Rascunho</span>
+        {% elif tarefa.status == 'pendente' %}
+            <span style="background:#e5e7eb; color:#374151; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">Pendente</span>
+        {% elif tarefa.status == 'em_andamento' %}
+            <span style="background:#3b82f6; color:#fff; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">Em Andamento</span>
+        {% elif tarefa.status == 'concluida' %}
+            <span style="background:#10b981; color:#fff; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">Conclu&iacute;da</span>
+        {% elif tarefa.status == 'bloqueada' %}
+            <span style="background:#ef4444; color:#fff; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">Bloqueada</span>
+        {% endif %}
+
+        {% if tarefa.prioridade == 'critica' %}
+            <span style="background:#fee2e2; color:#dc2626; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600;">Cr&iacute;tica</span>
+        {% elif tarefa.prioridade == 'alta' %}
+            <span style="background:#fef3c7; color:#d97706; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600;">Alta</span>
+        {% elif tarefa.prioridade == 'media' %}
+            <span style="background:#e0e7ff; color:#4f46e5; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600;">M&eacute;dia</span>
+        {% elif tarefa.prioridade == 'baixa' %}
+            <span style="background:#f3f4f6; color:#6b7280; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600;">Baixa</span>
+        {% endif %}
+
+        {% if tarefa.responsavel %}
+            <span style="background:#f0f9ff; color:#0369a1; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600;">
+                <i class="fas fa-user"></i> {{ tarefa.responsavel }}
+            </span>
+        {% endif %}
+    </div>
+
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'gestao_tarefa_editar' projeto.id tarefa.id %}" class="btn btn-primary" style="font-size:13px;">
+            <i class="fas fa-edit"></i> Editar
+        </a>
+        <a href="{% url 'kanban' projeto.id %}" class="btn btn-secondary" style="font-size:13px;">
+            <i class="fas fa-arrow-left"></i> Kanban
+        </a>
+    </div>
+</div>
+
+<h1 class="page-title" style="margin-bottom:4px;">{{ tarefa.titulo }}</h1>
+
+{% if tarefa.descricao %}
+<p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">{{ tarefa.descricao }}</p>
+{% endif %}
+
+<!-- Info basica -->
+<div class="card" style="padding:20px; margin-bottom:16px;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px;">
+        <div>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); display:block;">Projeto</span>
+            <span style="font-size:14px;">{{ projeto.nome }}</span>
+        </div>
+        {% if tarefa.etapa %}
+        <div>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); display:block;">Etapa</span>
+            <span style="font-size:14px;">{{ tarefa.etapa.nome }}</span>
+        </div>
+        {% endif %}
+        {% if tarefa.data_limite %}
+        <div>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); display:block;">Prazo</span>
+            <span style="font-size:14px;">{{ tarefa.data_limite|date:"d/m/Y" }}</span>
+        </div>
+        {% endif %}
+        <div>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); display:block;">Criada em</span>
+            <span style="font-size:14px;">{{ tarefa.data_criacao|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% if tarefa.criado_por_agente %}
+        <div>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); display:block;">Criado por</span>
+            <span style="font-size:14px;">
+                <i class="fas fa-robot" style="color:{{ tarefa.criado_por_agente.cor }};"></i>
+                {{ tarefa.criado_por_agente.nome }}
+                <span style="font-size:11px; color:var(--text-muted);">(n&iacute;vel {{ tarefa.nivel_delegacao }})</span>
+            </span>
+        </div>
+        {% endif %}
+        {% if tarefa.data_conclusao %}
+        <div>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); display:block;">Conclu&iacute;da em</span>
+            <span style="font-size:14px;">{{ tarefa.data_conclusao|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Campos de execucao -->
+{% if tarefa.objetivo or tarefa.contexto or tarefa.passos or tarefa.entregavel or tarefa.criterios_aceite %}
+<div class="card" style="padding:20px; margin-bottom:16px;">
+    <h3 style="font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:16px;">
+        <i class="fas fa-cogs"></i> Execu&ccedil;&atilde;o
+    </h3>
+
+    {% if tarefa.objetivo %}
+    <div style="margin-bottom:16px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Objetivo</span>
+        <div style="background:var(--bg-secondary); padding:12px 16px; border-radius:8px; font-size:14px; line-height:1.6;">{{ tarefa.objetivo }}</div>
+    </div>
+    {% endif %}
+
+    {% if tarefa.contexto %}
+    <div style="margin-bottom:16px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Contexto</span>
+        <div style="background:var(--bg-secondary); padding:12px 16px; border-radius:8px; font-size:14px; line-height:1.6;">{{ tarefa.contexto }}</div>
+    </div>
+    {% endif %}
+
+    {% if tarefa.passos %}
+    <div style="margin-bottom:16px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Passos</span>
+        <div style="background:var(--bg-secondary); padding:12px 16px; border-radius:8px; font-size:14px; line-height:1.8; white-space:pre-line;">{{ tarefa.passos }}</div>
+    </div>
+    {% endif %}
+
+    {% if tarefa.entregavel %}
+    <div style="margin-bottom:16px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Entreg&aacute;vel</span>
+        <div style="background:var(--bg-secondary); padding:12px 16px; border-radius:8px; font-size:14px;">{{ tarefa.entregavel }}</div>
+    </div>
+    {% endif %}
+
+    {% if tarefa.criterios_aceite %}
+    <div style="margin-bottom:16px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Crit&eacute;rios de Aceite</span>
+        <div style="background:var(--bg-secondary); padding:12px 16px; border-radius:8px; font-size:14px; line-height:1.6;">{{ tarefa.criterios_aceite }}</div>
+    </div>
+    {% endif %}
+
+    {% if tarefa.processo %}
+    <div style="margin-bottom:16px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Processo</span>
+        <a href="{% url 'gestao_documento' tarefa.processo.id %}" style="color:var(--primary); text-decoration:none; font-size:14px;">
+            <i class="fas fa-file-alt"></i> {{ tarefa.processo.titulo }}
+        </a>
+    </div>
+    {% endif %}
+
+    {% if tarefa.pasta_destino %}
+    <div>
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Pasta Destino</span>
+        <span style="font-size:14px;"><i class="fas fa-folder" style="color:{{ tarefa.pasta_destino.cor }};"></i> {{ tarefa.pasta_destino.caminho }}</span>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Log de Execucao -->
+{% if tarefa.log_execucao %}
+<div class="card" style="padding:20px; margin-bottom:16px;">
+    <h3 style="font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:16px;">
+        <i class="fas fa-history"></i> Hist&oacute;rico de Execu&ccedil;&atilde;o
+    </h3>
+    <div style="font-family:'JetBrains Mono', 'Fira Code', monospace; font-size:12px; line-height:1.8; background:#1e293b; color:#e2e8f0; padding:16px; border-radius:8px; overflow-x:auto;">
+        {% for line in tarefa.log_execucao.splitlines %}{% if line %}<div style="{% if 'Proposta:' in line %}color:#fbbf24;{% elif 'Dados:' in line %}color:#38bdf8;{% elif 'Rotina' in line %}color:#a78bfa;{% elif 'Erro' in line %}color:#f87171;{% endif %}">{{ line }}</div>{% endif %}{% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Notas -->
+{% if notas %}
+<div class="card" style="padding:20px; margin-bottom:16px;">
+    <h3 style="font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:16px;">
+        <i class="fas fa-sticky-note"></i> Notas
+    </h3>
+    {% for nota in notas %}
+    <div style="padding:12px 0; {% if not forloop.last %}border-bottom:1px solid var(--border);{% endif %}">
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+            {{ nota.autor|default:"Sistema" }} &mdash; {{ nota.data_criacao|date:"d/m/Y H:i" }}
+        </div>
+        <div style="font-size:14px; line-height:1.6;">{{ nota.texto }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Acoes rapidas -->
+{% if tarefa.status != 'concluida' %}
+<div class="card" style="padding:20px;">
+    <h3 style="font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:12px;">
+        <i class="fas fa-bolt"></i> A&ccedil;&otilde;es
+    </h3>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        {% if tarefa.status == 'rascunho' %}
+        <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="aprovar">
+            <button type="submit" class="btn btn-primary" style="font-size:13px;">
+                <i class="fas fa-check"></i> Aprovar Rascunho
+            </button>
+        </form>
+        {% endif %}
+
+        {% if tarefa.status == 'pendente' %}
+        <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="iniciar">
+            <button type="submit" class="btn btn-primary" style="font-size:13px;">
+                <i class="fas fa-play"></i> Iniciar
+            </button>
+        </form>
+        {% endif %}
+
+        {% if tarefa.status == 'em_andamento' %}
+        <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="concluir">
+            <button type="submit" style="font-size:13px; padding:8px 16px; background:#10b981; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                <i class="fas fa-check-double"></i> Marcar Conclu&iacute;da
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

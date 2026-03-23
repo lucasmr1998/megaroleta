@@ -1,0 +1,187 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Editar — {{ projeto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <h1 class="page-title">{{ projeto.nome }}</h1>
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'kanban' projeto.id %}" class="btn btn-secondary"><i class="fas fa-columns"></i> Kanban</a>
+        <a href="{% url 'gestao_projetos' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Projetos</a>
+    </div>
+</div>
+
+<form method="post">
+{% csrf_token %}
+
+<!-- Tabs -->
+<div style="display:flex; gap:4px; margin-bottom:20px; border-bottom:2px solid var(--border-light); padding-bottom:0;">
+    <button type="button" class="proj-tab active" onclick="showTab('geral')">Geral</button>
+    <button type="button" class="proj-tab" onclick="showTab('estrategia')">Estrat&eacute;gia</button>
+    <button type="button" class="proj-tab" onclick="showTab('pessoas')">Pessoas</button>
+    <button type="button" class="proj-tab" onclick="showTab('agentes')">Contexto IA</button>
+</div>
+
+<!-- Tab: Geral -->
+<div id="tab-geral" class="proj-tab-content">
+    <div class="card" style="padding:24px;">
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:16px;">
+            <div>
+                <label class="proj-label">Nome do Projeto</label>
+                <input type="text" name="nome" value="{{ projeto.nome }}" required class="proj-input">
+            </div>
+            <div>
+                <label class="proj-label">Status</label>
+                <select name="status" class="proj-input">
+                    <option value="planejamento" {% if projeto.status == 'planejamento' %}selected{% endif %}>Planejamento</option>
+                    <option value="em_andamento" {% if projeto.status == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                    <option value="pausado" {% if projeto.status == 'pausado' %}selected{% endif %}>Pausado</option>
+                    <option value="concluido" {% if projeto.status == 'concluido' %}selected{% endif %}>Conclu&iacute;do</option>
+                    <option value="cancelado" {% if projeto.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label class="proj-label">Descri&ccedil;&atilde;o</label>
+            <textarea name="descricao" rows="3" class="proj-input" style="resize:vertical;">{{ projeto.descricao }}</textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+            <div>
+                <label class="proj-label">Prioridade</label>
+                <select name="prioridade" class="proj-input">
+                    <option value="critica" {% if projeto.prioridade == 'critica' %}selected{% endif %}>Cr&iacute;tica</option>
+                    <option value="alta" {% if projeto.prioridade == 'alta' %}selected{% endif %}>Alta</option>
+                    <option value="media" {% if projeto.prioridade == 'media' %}selected{% endif %}>M&eacute;dia</option>
+                    <option value="baixa" {% if projeto.prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
+                </select>
+            </div>
+            <div>
+                <label class="proj-label">Data In&iacute;cio</label>
+                <input type="date" name="data_inicio" value="{{ projeto.data_inicio|date:'Y-m-d' }}" class="proj-input">
+            </div>
+            <div>
+                <label class="proj-label">Previs&atilde;o de T&eacute;rmino</label>
+                <input type="date" name="data_fim_prevista" value="{{ projeto.data_fim_prevista|date:'Y-m-d' }}" class="proj-input">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Estrategia -->
+<div id="tab-estrategia" class="proj-tab-content" style="display:none;">
+    <div class="card" style="padding:24px;">
+        <div style="margin-bottom:16px;">
+            <label class="proj-label">Objetivo</label>
+            <p class="proj-hint">O que este projeto deve alcan&ccedil;ar? Qual problema resolve?</p>
+            <textarea name="objetivo" rows="3" class="proj-input" style="resize:vertical;">{{ projeto.objetivo }}</textarea>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label class="proj-label">P&uacute;blico-alvo</label>
+            <p class="proj-hint">Para quem? (ex: membros de Floriano, parceiros restaurantes, equipe interna)</p>
+            <textarea name="publico_alvo" rows="2" class="proj-input" style="resize:vertical;">{{ projeto.publico_alvo }}</textarea>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label class="proj-label">Crit&eacute;rios de Sucesso</label>
+            <p class="proj-hint">Como sabemos que deu certo? KPIs e metas concretas (ex: 50 membros ativos, 3 parceiros)</p>
+            <textarea name="criterios_sucesso" rows="3" class="proj-input" style="resize:vertical;">{{ projeto.criterios_sucesso }}</textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div>
+                <label class="proj-label">Riscos</label>
+                <p class="proj-hint">O que pode dar errado? Depend&ecirc;ncias externas?</p>
+                <textarea name="riscos" rows="3" class="proj-input" style="resize:vertical;">{{ projeto.riscos }}</textarea>
+            </div>
+            <div>
+                <label class="proj-label">Premissas</label>
+                <p class="proj-hint">O que estamos assumindo? (ex: budget aprovado, parceiro X aceita)</p>
+                <textarea name="premissas" rows="3" class="proj-input" style="resize:vertical;">{{ projeto.premissas }}</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Pessoas -->
+<div id="tab-pessoas" class="proj-tab-content" style="display:none;">
+    <div class="card" style="padding:24px;">
+        <div style="margin-bottom:16px;">
+            <label class="proj-label">Respons&aacute;vel (dono do projeto)</label>
+            <input type="text" name="responsavel" value="{{ projeto.responsavel }}" class="proj-input" placeholder="Ex: CEO, PMM">
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label class="proj-label">Stakeholders</label>
+            <p class="proj-hint">Quem est&aacute; envolvido e qual o papel (1 por linha). Ex:<br>
+                CEO - Sponsor, decis&otilde;es finais<br>
+                PMM - Planejamento de lan&ccedil;amento<br>
+                B2B - Prospec&ccedil;&atilde;o de parceiros<br>
+                CS - Onboarding de membros
+            </p>
+            <textarea name="stakeholders" rows="6" class="proj-input" style="resize:vertical; font-family:'JetBrains Mono',monospace; font-size:13px;">{{ projeto.stakeholders }}</textarea>
+        </div>
+
+        <div>
+            <label class="proj-label">Or&ccedil;amento</label>
+            <p class="proj-hint">Budget dispon&iacute;vel, custos previstos, investimento necess&aacute;rio</p>
+            <textarea name="orcamento" rows="3" class="proj-input" style="resize:vertical;">{{ projeto.orcamento }}</textarea>
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Contexto IA -->
+<div id="tab-agentes" class="proj-tab-content" style="display:none;">
+    <div class="card" style="padding:24px;">
+        <div>
+            <label class="proj-label">Contexto para Agentes IA</label>
+            <p class="proj-hint">Informa&ccedil;&otilde;es extras que os agentes devem saber sobre este projeto. Tudo que voc&ecirc; escrever aqui &eacute; enviado no prompt quando um agente precisa trabalhar neste projeto.</p>
+            <textarea name="contexto_agentes" rows="10" class="proj-input" style="resize:vertical; font-family:'JetBrains Mono',monospace; font-size:13px;">{{ projeto.contexto_agentes }}</textarea>
+        </div>
+    </div>
+</div>
+
+<!-- Botoes -->
+<div style="display:flex; gap:8px; margin-top:20px;">
+    <button type="submit" class="btn btn-primary" style="flex:1;"><i class="fas fa-save"></i> Salvar Projeto</button>
+    <form method="post" action="{% url 'gestao_projeto_toggle' projeto.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary">
+            <i class="fas fa-{% if projeto.ativo %}archive{% else %}check{% endif %}"></i>
+            {% if projeto.ativo %}Arquivar{% else %}Reativar{% endif %}
+        </button>
+    </form>
+    <form method="post" action="{% url 'gestao_projeto_excluir' projeto.id %}" onsubmit="return confirm('Excluir o projeto e todas as tarefas?')">
+        {% csrf_token %}
+        <button type="submit" class="btn" style="background:#fee2e2; color:#dc2626; border:none; border-radius:8px; padding:10px 16px; cursor:pointer;">
+            <i class="fas fa-trash"></i>
+        </button>
+    </form>
+</div>
+</form>
+
+<style>
+.proj-label { font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.03em; }
+.proj-hint { font-size:11px; color:#94a3b8; margin:0 0 6px 0; line-height:1.4; }
+.proj-input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; outline:none; font-family:'Inter',sans-serif; }
+.proj-input:focus { border-color:var(--primary); }
+.proj-tab {
+    padding:8px 20px; border:none; background:transparent; cursor:pointer;
+    font-size:13px; font-weight:600; color:var(--text-muted);
+    border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s;
+}
+.proj-tab:hover { color:var(--text-secondary); }
+.proj-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+</style>
+
+<script>
+function showTab(tab) {
+    document.querySelectorAll('.proj-tab-content').forEach(function(el) { el.style.display = 'none'; });
+    document.querySelectorAll('.proj-tab').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('tab-' + tab).style.display = 'block';
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

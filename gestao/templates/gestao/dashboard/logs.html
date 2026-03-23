@@ -1,0 +1,150 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Logs de Execução — Gestão{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+    <div>
+        <h1 class="page-title" style="margin-bottom:4px;">Logs de Execu&ccedil;&atilde;o</h1>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">{{ total }} execu&ccedil;&atilde;o{{ total|pluralize:"ões" }} registrada{{ total|pluralize:"s" }} &mdash; tools e agentes</p>
+    </div>
+</div>
+
+<!-- Toolbar: busca + filtros -->
+<div class="card" style="padding:12px 16px; margin-bottom:12px;">
+    <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div style="position:relative; flex:1; min-width:200px; max-width:320px;">
+            <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:12px;"></i>
+            <input type="text" name="q" value="{{ busca }}" placeholder="Buscar nos logs..."
+                   style="width:100%; padding:7px 12px 7px 30px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none;">
+        </div>
+        <select name="agente" onchange="this.form.submit()" style="padding:7px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none; min-width:160px;">
+            <option value="">Todos os agentes</option>
+            {% for a in agentes %}
+            <option value="{{ a.slug }}" {% if agente_filtro == a.slug %}selected{% endif %}>{{ a.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="sucesso" onchange="this.form.submit()" style="padding:7px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none; min-width:120px;">
+            <option value="">Todos</option>
+            <option value="1" {% if sucesso_filtro == '1' %}selected{% endif %}>OK</option>
+            <option value="0" {% if sucesso_filtro == '0' %}selected{% endif %}>Erro</option>
+        </select>
+        {% if busca or agente_filtro or sucesso_filtro %}
+        <a href="{% url 'gestao_logs' %}" style="font-size:12px; color:var(--text-muted); text-decoration:none;">&times; Limpar</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Tabela de logs -->
+<div class="card" style="overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr style="background:var(--bg-page);">
+                <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Tool</th>
+                <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:140px;">Agente</th>
+                <th style="padding:12px 16px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:60px;">Status</th>
+                <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Resultado</th>
+                <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:80px;">Tempo</th>
+                <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:140px;">Quando</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr class="doc-row">
+                <td style="padding:10px 16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        {% if log.tool %}
+                        <i class="{{ log.tool.icone|default:'fas fa-bolt' }}" style="color:var(--text-muted); font-size:12px;"></i>
+                        {% endif %}
+                        <span style="font-size:13px; font-weight:600; color:var(--text-main);">{{ log.tool.nome|default:log.tool_slug }}</span>
+                    </div>
+                </td>
+                <td style="padding:10px 16px;">
+                    {% if log.agente %}
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <i class="{{ log.agente.icone|default:'fas fa-robot' }}" style="color:{{ log.agente.cor|default:'#6b7280' }}; font-size:11px;"></i>
+                        <span style="font-size:12px; color:var(--text-secondary);">{{ log.agente.nome }}</span>
+                    </div>
+                    {% else %}
+                    <span style="font-size:12px; color:var(--text-muted);">Sistema</span>
+                    {% endif %}
+                </td>
+                <td style="padding:10px 16px; text-align:center;">
+                    {% if log.sucesso %}
+                    <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#16a34a;">
+                        <i class="fas fa-check-circle"></i> OK
+                    </span>
+                    {% else %}
+                    <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#dc2626;">
+                        <i class="fas fa-times-circle"></i> Erro
+                    </span>
+                    {% endif %}
+                </td>
+                <td style="padding:10px 16px;">
+                    <span style="font-size:12px; color:var(--text-muted); display:block; max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        {{ log.resultado|truncatewords:20 }}
+                    </span>
+                </td>
+                <td style="padding:10px 16px; text-align:right;">
+                    {% if log.tempo_ms %}
+                    <span style="font-size:11px; color:var(--text-muted);">{{ log.tempo_ms }}ms</span>
+                    {% else %}
+                    <span style="font-size:11px; color:var(--text-muted);">&mdash;</span>
+                    {% endif %}
+                </td>
+                <td style="padding:10px 16px; text-align:right;">
+                    <span style="font-size:11px; color:var(--text-muted);">{{ log.data_criacao|date:"d/m H:i" }}</span>
+                    <br>
+                    <span style="font-size:10px; color:var(--text-muted);">{{ log.data_criacao|timesince }} atr&aacute;s</span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="padding:60px 16px; text-align:center;">
+                    <i class="fas fa-history" style="font-size:32px; color:#e5e7eb; margin-bottom:12px; display:block;"></i>
+                    <div style="font-size:14px; color:var(--text-muted);">
+                        {% if busca %}Nenhum log encontrado para &ldquo;{{ busca }}&rdquo;{% else %}Nenhum log registrado{% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if logs.has_other_pages %}
+<div style="display:flex; justify-content:center; align-items:center; gap:4px; margin-top:16px; padding:12px 0;">
+    {% if logs.has_previous %}
+    <a href="?page={{ logs.previous_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if agente_filtro %}&agente={{ agente_filtro }}{% endif %}{% if sucesso_filtro %}&sucesso={{ sucesso_filtro }}{% endif %}" class="page-btn">&laquo;</a>
+    {% endif %}
+    {% for num in logs.paginator.page_range %}
+        {% if logs.number == num %}
+        <span class="page-btn active">{{ num }}</span>
+        {% elif num > logs.number|add:'-3' and num < logs.number|add:'3' %}
+        <a href="?page={{ num }}{% if busca %}&q={{ busca }}{% endif %}{% if agente_filtro %}&agente={{ agente_filtro }}{% endif %}{% if sucesso_filtro %}&sucesso={{ sucesso_filtro }}{% endif %}" class="page-btn">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if logs.has_next %}
+    <a href="?page={{ logs.next_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if agente_filtro %}&agente={{ agente_filtro }}{% endif %}{% if sucesso_filtro %}&sucesso={{ sucesso_filtro }}{% endif %}" class="page-btn">&raquo;</a>
+    {% endif %}
+    <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ logs.paginator.count }} total</span>
+</div>
+{% endif %}
+
+<style>
+.doc-row { border-bottom:1px solid var(--border-light); transition:background 0.1s; }
+.doc-row:hover { background:var(--bg-page); }
+.doc-row:last-child { border-bottom:none; }
+.page-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:32px; height:32px; padding:0 8px;
+    border-radius:8px; font-size:13px; font-weight:600;
+    color:var(--text-muted); text-decoration:none;
+    border:1px solid var(--border-light); background:white;
+    transition:all 0.15s; cursor:pointer;
+}
+.page-btn:hover { background:var(--bg-page); color:var(--primary); border-color:var(--primary); }
+.page-btn.active { background:var(--primary); color:white; border-color:var(--primary); cursor:default; }
+</style>
+{% endblock %}

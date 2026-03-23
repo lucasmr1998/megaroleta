@@ -9,13 +9,62 @@
         <h1 class="page-title">{{ titulo }}</h1>
     </div>
     <div style="display:flex; gap:8px;">
-        {% if editar_url %}
-        <a href="{% url 'gestao_entrega_editar' agente arquivo %}" class="btn btn-primary"><i class="fas fa-edit"></i> Editar</a>
+        {% if entrega_id %}
+        <a href="{% url 'gestao_entrega_editar' entrega_id %}" class="btn btn-primary"><i class="fas fa-edit"></i> Editar</a>
+        <form method="post" action="{% url 'gestao_entrega_excluir' entrega_id %}" style="display:inline;" onsubmit="return confirm('Excluir esta entrega?')">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background:#fee2e2; color:#dc2626; border:none; border-radius:8px; padding:8px 16px; cursor:pointer;"><i class="fas fa-trash"></i> Excluir</button>
+        </form>
+        {% elif documento_id %}
+        <a href="{% url 'gestao_documento_editar' documento_id %}" class="btn btn-primary"><i class="fas fa-edit"></i> Editar</a>
+        <form method="post" action="{% url 'gestao_documento_excluir' documento_id %}" style="display:inline;" onsubmit="return confirm('Excluir este documento?')">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background:#fee2e2; color:#dc2626; border:none; border-radius:8px; padding:8px 16px; cursor:pointer;"><i class="fas fa-trash"></i> Excluir</button>
+        </form>
         {% endif %}
         <a href="{% url voltar_url %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
     </div>
 </div>
 
+{% if is_imagem %}
+<div class="card" style="padding:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span style="font-size:13px; color:var(--text-muted);"><i class="fas fa-image"></i> Imagem Gerada por IA</span>
+        <a href="{{ imagem_url }}" download class="btn btn-secondary" style="font-size:12px; padding:6px 12px;">
+            <i class="fas fa-download"></i> Baixar
+        </a>
+    </div>
+    <img src="{{ imagem_url }}" alt="{{ titulo }}" style="width:100%; max-width:800px; border-radius:12px; border:1px solid var(--border); display:block; margin:0 auto;">
+</div>
+
+{% elif is_email %}
+<div class="card" style="padding:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <span style="font-size:13px; color:var(--text-muted);"><i class="fas fa-envelope"></i> Preview do e-mail</span>
+        <button onclick="copiarHTML()" class="btn btn-secondary" style="font-size:12px; padding:6px 12px;">
+            <i class="fas fa-copy"></i> Copiar HTML
+        </button>
+    </div>
+    <iframe id="email-preview" srcdoc="{{ html }}" style="width:100%; min-height:600px; border:1px solid var(--border); border-radius:8px; background:#fff;" sandbox="allow-same-origin"></iframe>
+    <details style="margin-top:12px;">
+        <summary style="cursor:pointer; font-weight:600; font-size:13px; color:var(--text-secondary);">
+            <i class="fas fa-code"></i> Ver código HTML
+        </summary>
+        <pre style="background:#1e293b; color:#e2e8f0; padding:16px; border-radius:10px; overflow-x:auto; margin-top:8px; font-size:12px; max-height:400px;">{{ html }}</pre>
+    </details>
+</div>
+<script>
+function copiarHTML() {
+    const html = document.getElementById('email-preview').getAttribute('srcdoc');
+    navigator.clipboard.writeText(html).then(() => {
+        const btn = event.target.closest('button');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+        setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+}
+</script>
+{% else %}
 <div class="card" style="padding:32px;">
     <div class="markdown-body" style="
         font-size:14px;
@@ -25,6 +74,7 @@
         {{ html|safe }}
     </div>
 </div>
+{% endif %}
 
 <style>
 .markdown-body h1 { font-size:22px; font-weight:800; margin:24px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border); }

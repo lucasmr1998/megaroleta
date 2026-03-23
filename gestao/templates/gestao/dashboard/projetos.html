@@ -76,6 +76,15 @@
             <a href="{% url 'kanban' p.id %}" class="btn btn-primary" style="flex:1; justify-content:center; font-size:13px;">
                 <i class="fas fa-columns"></i> Kanban
             </a>
+            <a href="{% url 'gestao_projeto_editar' p.id %}" class="btn btn-secondary" style="padding:8px 12px; font-size:13px;" title="Editar">
+                <i class="fas fa-pen"></i>
+            </a>
+            <form method="post" action="{% url 'gestao_projeto_toggle' p.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary" style="padding:8px 12px; font-size:13px;" title="{{ p.ativo|yesno:'Arquivar,Reativar' }}">
+                    <i class="fas fa-{{ p.ativo|yesno:'archive,redo' }}"></i>
+                </button>
+            </form>
         </div>
     </div>
     {% empty %}

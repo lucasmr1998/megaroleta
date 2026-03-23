@@ -63,8 +63,9 @@
         <h1 class="page-title">{{ projeto.nome }}</h1>
         <p class="page-subtitle">{{ projeto.descricao|truncatewords:15|default:"Kanban do projeto" }}</p>
     </div>
-    <div style="display:flex; gap:10px;">
-        <a href="{% url 'dashboard_ceo' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'gestao_projetos' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Projetos</a>
+        <a href="{% url 'gestao_projeto_editar' projeto.id %}" class="btn btn-secondary" title="Editar Projeto"><i class="fas fa-pen"></i></a>
         <button class="btn btn-primary" onclick="document.getElementById('modal-tarefa').style.display='flex'">
             <i class="fas fa-plus"></i> Nova Tarefa
         </button>
@@ -80,7 +81,32 @@
 </div>
 
 <!-- Kanban Board -->
-<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; min-height:400px;">
+<div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; min-height:400px;">
+
+    <!-- Rascunho -->
+    <div style="background:#fffbeb; border-radius:12px; padding:12px; border:1px solid #fde68a;">
+        <div style="margin-bottom:12px; padding:0 4px;">
+            <h3 style="font-size:13px; font-weight:700; color:#d97706; text-transform:uppercase;">
+                <span style="color:#fbbf24;">&#9679;</span> Rascunho
+            </h3>
+        </div>
+        {% for t in projeto.tarefas.all %}{% if t.status == 'rascunho' %}
+        <div style="background:white; border:1px solid #fde68a; border-radius:10px; padding:12px; margin-bottom:8px;
+            {% if t.prioridade == 'critica' %}border-left:3px solid var(--danger);{% elif t.prioridade == 'alta' %}border-left:3px solid var(--warning);{% endif %}">
+            <a href="{% url 'gestao_tarefa_detalhe' projeto.id t.id %}" style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px; display:block; text-decoration:none;">{{ t.titulo }}</a>
+            {% if t.criado_por_agente %}<div style="font-size:10px; color:#d97706; margin-bottom:4px;"><i class="fas fa-robot"></i> {{ t.criado_por_agente.nome }}</div>{% endif %}
+            {% if t.responsavel %}<div style="font-size:11px; color:#64748b; margin-bottom:4px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
+            <div style="display:flex; gap:4px;">
+                <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="mover"><input type="hidden" name="tarefa_id" value="{{ t.id }}"><input type="hidden" name="novo_status" value="pendente">
+                    <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid #10b981; border-radius:4px; background:#ecfdf5; color:#10b981; cursor:pointer;">Aprovar &rarr;</button>
+                </form>
+                <form method="post" style="display:inline;" onsubmit="return confirm('Excluir?')">{% csrf_token %}<input type="hidden" name="action" value="excluir_tarefa"><input type="hidden" name="tarefa_id" value="{{ t.id }}">
+                    <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid #e5e7eb; border-radius:4px; background:white; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>
+                </form>
+            </div>
+        </div>
+        {% endif %}{% endfor %}
+    </div>
 
     <!-- Pendente -->
     <div style="background:#f8fafc; border-radius:12px; padding:12px; border:1px solid #e5e7eb;">
@@ -92,13 +118,15 @@
         {% for t in projeto.tarefas.all %}{% if t.status == 'pendente' %}
         <div style="background:white; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px;
             {% if t.prioridade == 'critica' %}border-left:3px solid var(--danger);{% elif t.prioridade == 'alta' %}border-left:3px solid var(--warning);{% endif %}">
-            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px;">{{ t.titulo }}</div>
+            <a href="{% url 'gestao_tarefa_detalhe' projeto.id t.id %}" style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px; display:block; text-decoration:none;">{{ t.titulo }}</a>
+            {% if t.criado_por_agente %}<div style="font-size:10px; color:#d97706; margin-bottom:4px;"><i class="fas fa-robot"></i> {{ t.criado_por_agente.nome }}</div>{% endif %}
             {% if t.responsavel %}<div style="font-size:11px; color:#64748b; margin-bottom:4px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
             {% if t.data_limite %}<div style="font-size:11px; color:#94a3b8; margin-bottom:6px;"><i class="fas fa-calendar" style="margin-right:4px;"></i>{{ t.data_limite|date:"d/m" }}</div>{% endif %}
             <div style="display:flex; gap:4px;">
                 <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="mover"><input type="hidden" name="tarefa_id" value="{{ t.id }}"><input type="hidden" name="novo_status" value="em_andamento">
                     <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid var(--primary); border-radius:4px; background:#eff6ff; color:var(--primary); cursor:pointer;">Iniciar &rarr;</button>
                 </form>
+                <a href="{% url 'gestao_tarefa_editar' projeto.id t.id %}" style="font-size:10px; padding:3px 8px; border:1px solid #e5e7eb; border-radius:4px; background:white; color:#64748b; cursor:pointer; text-decoration:none; display:inline-block;"><i class="fas fa-pen"></i></a>
                 <form method="post" style="display:inline;" onsubmit="return confirm('Excluir?')">{% csrf_token %}<input type="hidden" name="action" value="excluir_tarefa"><input type="hidden" name="tarefa_id" value="{{ t.id }}">
                     <button type="submit" style="font-size:10px; padding:3px 8px; border:1px solid #e5e7eb; border-radius:4px; background:white; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>
                 </form>
@@ -117,7 +145,8 @@
         {% for t in projeto.tarefas.all %}{% if t.status == 'em_andamento' %}
         <div style="background:white; border:1px solid #dbeafe; border-radius:10px; padding:12px; margin-bottom:8px;
             {% if t.prioridade == 'critica' %}border-left:3px solid var(--danger);{% elif t.prioridade == 'alta' %}border-left:3px solid var(--warning);{% endif %}">
-            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px;">{{ t.titulo }}</div>
+            <a href="{% url 'gestao_tarefa_detalhe' projeto.id t.id %}" style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px; display:block; text-decoration:none;">{{ t.titulo }}</a>
+            {% if t.criado_por_agente %}<div style="font-size:10px; color:#d97706; margin-bottom:4px;"><i class="fas fa-robot"></i> {{ t.criado_por_agente.nome }}</div>{% endif %}
             {% if t.responsavel %}<div style="font-size:11px; color:#64748b; margin-bottom:4px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
             {% if t.data_limite %}<div style="font-size:11px; color:#94a3b8; margin-bottom:6px;"><i class="fas fa-calendar" style="margin-right:4px;"></i>{{ t.data_limite|date:"d/m" }}</div>{% endif %}
             <div style="display:flex; gap:4px;">
@@ -141,7 +170,7 @@
         </div>
         {% for t in projeto.tarefas.all %}{% if t.status == 'concluida' %}
         <div style="background:white; border:1px solid #a7f3d0; border-radius:10px; padding:12px; margin-bottom:8px; opacity:0.8;">
-            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:4px; text-decoration:line-through;">{{ t.titulo }}</div>
+            <a href="{% url 'gestao_tarefa_detalhe' projeto.id t.id %}" style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:4px; text-decoration:line-through; display:block;">{{ t.titulo }}</a>
             {% if t.responsavel %}<div style="font-size:11px; color:#64748b;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
         </div>
         {% endif %}{% endfor %}
@@ -156,7 +185,7 @@
         </div>
         {% for t in projeto.tarefas.all %}{% if t.status == 'bloqueada' %}
         <div style="background:white; border:1px solid #fecaca; border-radius:10px; padding:12px; margin-bottom:8px;">
-            <div style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px;">{{ t.titulo }}</div>
+            <a href="{% url 'gestao_tarefa_detalhe' projeto.id t.id %}" style="font-size:13px; font-weight:600; color:#1e293b; margin-bottom:6px; display:block; text-decoration:none;">{{ t.titulo }}</a>
             {% if t.responsavel %}<div style="font-size:11px; color:#64748b; margin-bottom:4px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ t.responsavel }}</div>{% endif %}
             <div style="display:flex; gap:4px;">
                 <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="mover"><input type="hidden" name="tarefa_id" value="{{ t.id }}"><input type="hidden" name="novo_status" value="pendente">

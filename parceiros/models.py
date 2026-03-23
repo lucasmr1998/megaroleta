@@ -3,6 +3,23 @@ from django.contrib.auth.models import User
 from roleta.models import Cidade, NivelClube, MembroClube
 
 
+class CategoriaParceiro(models.Model):
+    """Categoria para agrupar parceiros (ex: Alimentacao, Beleza, Esporte)."""
+    nome = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
+    icone = models.CharField(max_length=50, default='fas fa-tag', help_text="Classe FontAwesome")
+    ordem = models.IntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.nome
+
+    class Meta:
+        verbose_name = "Categoria de Parceiro"
+        verbose_name_plural = "Categorias de Parceiros"
+        ordering = ['ordem', 'nome']
+
+
 class Parceiro(models.Model):
     nome = models.CharField(max_length=255)
     logo = models.ImageField(upload_to='parceiros/logos/', null=True, blank=True)
@@ -11,6 +28,7 @@ class Parceiro(models.Model):
     contato_telefone = models.CharField(max_length=20, blank=True)
     contato_email = models.EmailField(blank=True)
     usuario = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='parceiro', help_text="Usuário Django vinculado para acesso ao painel")
+    categoria = models.ForeignKey(CategoriaParceiro, on_delete=models.SET_NULL, null=True, blank=True, related_name='parceiros')
     cidades = models.ManyToManyField(Cidade, blank=True, related_name='parceiros')
     ativo = models.BooleanField(default=True)
     data_cadastro = models.DateTimeField(auto_now_add=True)
@@ -52,15 +70,15 @@ class CupomDesconto(models.Model):
     quantidade_resgatada = models.IntegerField(default=0)
     limite_por_membro = models.IntegerField(default=1)
     data_inicio = models.DateTimeField()
-    data_fim = models.DateTimeField()
+    data_fim = models.DateTimeField(db_index=True)
     cidades_permitidas = models.ManyToManyField(Cidade, blank=True, related_name='cupons')
     STATUS_APROVACAO = [
         ('aprovado', 'Aprovado'),
         ('pendente', 'Aguardando Aprovação'),
         ('rejeitado', 'Rejeitado'),
     ]
-    ativo = models.BooleanField(default=True)
-    status_aprovacao = models.CharField(max_length=15, choices=STATUS_APROVACAO, default='aprovado', help_text="Cupons solicitados por parceiros ficam pendentes até aprovação")
+    ativo = models.BooleanField(default=True, db_index=True)
+    status_aprovacao = models.CharField(max_length=15, choices=STATUS_APROVACAO, default='aprovado', db_index=True, help_text="Cupons solicitados por parceiros ficam pendentes até aprovação")
     motivo_rejeicao = models.TextField(blank=True, help_text="Motivo da rejeição (preenchido pelo admin)")
     data_cadastro = models.DateTimeField(auto_now_add=True)
 
@@ -97,9 +115,9 @@ class ResgateCupom(models.Model):
     cupom = models.ForeignKey(CupomDesconto, on_delete=models.CASCADE, related_name='resgates')
     codigo_unico = models.CharField(max_length=20, unique=True)
     pontos_gastos = models.IntegerField(default=0)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='resgatado')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='resgatado', db_index=True)
     valor_compra = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Valor total da compra no estabelecimento")
-    data_resgate = models.DateTimeField(auto_now_add=True)
+    data_resgate = models.DateTimeField(auto_now_add=True, db_index=True)
     data_utilizacao = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):

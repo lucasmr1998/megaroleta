@@ -1,18 +1,52 @@
 {% extends 'roleta/dashboard/base.html' %}
 
-{% block title %}Editar — {{ nome }}{% endblock %}
+{% block title %}{% if entrega %}Editar — {{ entrega.titulo }}{% else %}Nova Entrega{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
     <div>
-        <span class="badge badge-info">{{ agente|upper }}</span>
-        <h1 class="page-title">Editar: {{ nome }}</h1>
+        {% if entrega %}
+        <span class="badge badge-info">{{ entrega.agente.nome|default:"Sem agente" }}</span>
+        <h1 class="page-title">Editar: {{ entrega.titulo }}</h1>
+        {% else %}
+        <h1 class="page-title">Nova Entrega</h1>
+        {% endif %}
     </div>
-    <a href="{% url 'gestao_entrega_detalhe' agente arquivo %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+    {% if entrega %}
+    <a href="{% url 'gestao_entrega_detalhe' entrega.id %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+    {% else %}
+    <a href="{% url 'gestao_entregas' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+    {% endif %}
 </div>
 
 <form method="post">
 {% csrf_token %}
+
+<div class="card" style="padding:24px; margin-bottom:20px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">T&iacute;tulo</label>
+            <input type="text" name="titulo" value="{{ entrega.titulo|default:'' }}" required
+                   style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Agente</label>
+            <select name="agente" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+                <option value="">Sem agente</option>
+                {% for a in agentes %}
+                <option value="{{ a.id }}" {% if entrega and entrega.agente_id == a.id %}selected{% endif %}>{{ a.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    {% if not entrega %}
+    <div style="margin-bottom:16px;">
+        <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Resumo</label>
+        <input type="text" name="resumo" value=""
+               style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+    </div>
+    {% endif %}
+</div>
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
     <!-- Editor -->
@@ -22,7 +56,7 @@
             <button type="submit" class="btn btn-primary" style="font-size:13px;"><i class="fas fa-save"></i> Salvar</button>
         </div>
         <textarea name="conteudo" id="editor" style="
-            width:100%; min-height:calc(100vh - 250px);
+            width:100%; min-height:calc(100vh - 350px);
             padding:16px; border:1px solid var(--border); border-radius:12px;
             font-family:'JetBrains Mono', 'Fira Code', monospace; font-size:13px;
             line-height:1.6; resize:vertical; outline:none; background:white;
@@ -32,11 +66,11 @@
 
     <!-- Preview -->
     <div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="margin-bottom:8px;">
             <h3 style="font-size:14px; font-weight:700; color:var(--text-muted);">Preview</h3>
         </div>
         <div id="preview" class="card" style="
-            padding:24px; min-height:calc(100vh - 250px);
+            padding:24px; min-height:calc(100vh - 350px);
             overflow-y:auto; font-size:14px; line-height:1.7;
         "></div>
     </div>
@@ -62,15 +96,14 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 <script>
 function atualizarPreview() {
     var md = document.getElementById('editor').value;
-    document.getElementById('preview').innerHTML = marked.parse(md);
+    document.getElementById('preview').innerHTML = DOMPurify.sanitize(marked.parse(md));
 }
-// Render on load
 atualizarPreview();
 
-// Tab support in textarea
 document.getElementById('editor').addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
         e.preventDefault();
@@ -78,7 +111,6 @@ document.getElementById('editor').addEventListener('keydown', function(e) {
         var end = this.selectionEnd;
         this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
         this.selectionStart = this.selectionEnd = start + 2;
-        atualizarPreview();
     }
 });
 </script>

@@ -1,0 +1,148 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Editar Tarefa — {{ tarefa.titulo }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">{{ projeto.nome }}</div>
+        <h1 class="page-title">Editar Tarefa</h1>
+    </div>
+    <a href="{% url 'kanban' projeto.id %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Kanban</a>
+</div>
+
+<div class="card" style="padding:24px; max-width:600px;">
+    <form method="post">
+    {% csrf_token %}
+
+    <div style="margin-bottom:16px;">
+        <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">T&iacute;tulo</label>
+        <input type="text" name="titulo" value="{{ tarefa.titulo }}" required
+               style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+    </div>
+
+    <div style="margin-bottom:16px;">
+        <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Descri&ccedil;&atilde;o</label>
+        <textarea name="descricao" rows="3"
+                  style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; resize:vertical;">{{ tarefa.descricao }}</textarea>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Status</label>
+            <select name="status" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+                <option value="pendente" {% if tarefa.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                <option value="em_andamento" {% if tarefa.status == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                <option value="concluida" {% if tarefa.status == 'concluida' %}selected{% endif %}>Conclu&iacute;da</option>
+                <option value="bloqueada" {% if tarefa.status == 'bloqueada' %}selected{% endif %}>Bloqueada</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Prioridade</label>
+            <select name="prioridade" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+                <option value="critica" {% if tarefa.prioridade == 'critica' %}selected{% endif %}>Cr&iacute;tica</option>
+                <option value="alta" {% if tarefa.prioridade == 'alta' %}selected{% endif %}>Alta</option>
+                <option value="media" {% if tarefa.prioridade == 'media' %}selected{% endif %}>M&eacute;dia</option>
+                <option value="baixa" {% if tarefa.prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
+            </select>
+        </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Respons&aacute;vel</label>
+            <input type="text" name="responsavel" value="{{ tarefa.responsavel }}"
+                   style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Prazo</label>
+            <input type="date" name="data_limite" value="{{ tarefa.data_limite|date:'Y-m-d' }}"
+                   style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+        <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Etapa</label>
+        <select name="etapa_id" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">Sem etapa</option>
+            {% for e in etapas %}
+            <option value="{{ e.id }}" {% if tarefa.etapa_id == e.id %}selected{% endif %}>{{ e.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Campos estruturados para execucao por agentes -->
+    <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--border);">
+        <h3 style="font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:16px;">
+            <i class="fas fa-robot" style="margin-right:4px;"></i> Execu&ccedil;&atilde;o por Agente
+        </h3>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Objetivo</label>
+            <textarea name="objetivo" rows="2" placeholder="O que esta tarefa deve alcancar"
+                      style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; resize:vertical;">{{ tarefa.objetivo }}</textarea>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Contexto</label>
+            <textarea name="contexto" rows="2" placeholder="Publico-alvo, tom, referencias, restricoes"
+                      style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; resize:vertical;">{{ tarefa.contexto }}</textarea>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Passos</label>
+            <textarea name="passos" rows="4" placeholder="1. Consultar dados do sistema&#10;2. Redigir usando tool X&#10;3. Gerar HTML&#10;4. Salvar como documento"
+                      style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; resize:vertical;">{{ tarefa.passos }}</textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+            <div>
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Entreg&aacute;vel</label>
+                <input type="text" name="entregavel" value="{{ tarefa.entregavel }}" placeholder="Ex: documento de e-mail salvo"
+                       style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Pasta destino</label>
+                <select name="pasta_destino" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+                    <option value="">Sem pasta</option>
+                    {% for p in pastas %}
+                    <option value="{{ p.id }}" {% if tarefa.pasta_destino_id == p.id %}selected{% endif %}>{{ p.caminho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Crit&eacute;rios de aceite</label>
+            <textarea name="criterios_aceite" rows="2" placeholder="Como saber que esta tarefa foi concluida corretamente"
+                      style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; resize:vertical;">{{ tarefa.criterios_aceite }}</textarea>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Processo (documento de refer&ecirc;ncia)</label>
+            <select name="processo" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+                <option value="">Nenhum</option>
+                {% for doc in processos %}
+                <option value="{{ doc.id }}" {% if tarefa.processo_id == doc.id %}selected{% endif %}>{{ doc.titulo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%; margin-top:16px;"><i class="fas fa-save"></i> Salvar</button>
+    </form>
+
+    <!-- Notas -->
+    {% if tarefa.notas.all %}
+    <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--border);">
+        <h3 style="font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:12px;">Notas</h3>
+        {% for nota in tarefa.notas.all %}
+        <div style="padding:10px 14px; background:var(--bg-page); border-radius:8px; margin-bottom:8px;">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">{{ nota.autor }} &mdash; {{ nota.data_criacao|date:"d/m/Y H:i" }}</div>
+            <div style="font-size:13px; color:var(--text-main);">{{ nota.texto }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

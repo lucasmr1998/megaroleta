@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from roleta.models import MembroClube, RegraPontuacao, ExtratoPontuacao, NivelClube, RoletaConfig, RouletteAsset, Cidade
 from parceiros.models import CupomDesconto, ResgateCupom
@@ -78,18 +79,21 @@ def membro_indicar(request):
         membro.refresh_from_db()
 
     config, _ = IndicacaoConfig.objects.get_or_create(id=1)
-    indicacoes = Indicacao.objects.filter(membro_indicador=membro).order_by('-data_indicacao')[:30]
-    total = Indicacao.objects.filter(membro_indicador=membro).count()
-    convertidas = Indicacao.objects.filter(membro_indicador=membro, status='convertido').count()
-    pendentes = Indicacao.objects.filter(membro_indicador=membro, status='pendente').count()
+    indicacoes_qs = Indicacao.objects.filter(membro_indicador=membro)
+    stats = indicacoes_qs.aggregate(
+        total=Count('id'),
+        convertidas=Count('id', filter=Q(status='convertido')),
+        pendentes=Count('id', filter=Q(status='pendente')),
+    )
+    indicacoes = indicacoes_qs.order_by('-data_indicacao')[:30]
 
     return render(request, 'roleta/membro/indicar.html', {
         'membro': membro,
         'config': config,
         'indicacoes': indicacoes,
-        'total': total,
-        'convertidas': convertidas,
-        'pendentes': pendentes,
+        'total': stats['total'],
+        'convertidas': stats['convertidas'],
+        'pendentes': stats['pendentes'],
     })
 
 
@@ -100,9 +104,15 @@ def membro_missoes(request):
         return redirect('roleta_index')
 
     regras = RegraPontuacao.objects.filter(ativo=True, visivel_na_roleta=True)
+    conclusoes_map = dict(
+        ExtratoPontuacao.objects.filter(membro=membro, regra__in=regras)
+        .values_list('regra_id')
+        .annotate(cnt=Count('id'))
+        .values_list('regra_id', 'cnt')
+    )
     missoes = []
     for r in regras:
-        conclusoes = ExtratoPontuacao.objects.filter(membro=membro, regra=r).count()
+        conclusoes = conclusoes_map.get(r.id, 0)
         missoes.append({
             'nome': r.nome_exibicao,
             'pontos_saldo': r.pontos_saldo,
@@ -145,11 +155,17 @@ def membro_perfil(request):
     # Extrato recente
     extrato = ExtratoPontuacao.objects.filter(membro=membro).select_related('regra').order_by('-data_recebimento')[:20]
 
-    # Missões
+    # Missões — query única para conclusões
     regras = RegraPontuacao.objects.filter(ativo=True, visivel_na_roleta=True)
+    conclusoes_map = dict(
+        ExtratoPontuacao.objects.filter(membro=membro, regra__in=regras)
+        .values_list('regra_id')
+        .annotate(cnt=Count('id'))
+        .values_list('regra_id', 'cnt')
+    )
     missoes = []
     for r in regras:
-        conclusoes = ExtratoPontuacao.objects.filter(membro=membro, regra=r).count()
+        conclusoes = conclusoes_map.get(r.id, 0)
         missoes.append({
             'nome': r.nome_exibicao,
             'pontos_saldo': r.pontos_saldo,
@@ -165,4 +181,29 @@ def membro_perfil(request):
         'prox_xp': prox_xp,
         'extrato': extrato,
         'missoes': missoes,
+    })
+
+
+def membro_faq(request):
+    """Página de FAQ do membro."""
+    membro = _get_membro(request)
+    if not membro:
+        return redirect('roleta_index')
+
+    from gestao.models import FAQCategoria, FAQItem
+    from django.db.models import Prefetch
+
+    categorias = FAQCategoria.objects.filter(ativo=True).prefetch_related(
+        Prefetch('itens', queryset=FAQItem.objects.filter(ativo=True))
+    )
+
+    cat_slug = request.GET.get('cat')
+    categoria_ativa = None
+    if cat_slug:
+        categoria_ativa = FAQCategoria.objects.filter(slug=cat_slug, ativo=True).first()
+
+    return render(request, 'roleta/membro/faq.html', {
+        'membro': membro,
+        'categorias': categorias,
+        'categoria_ativa': categoria_ativa,
     })

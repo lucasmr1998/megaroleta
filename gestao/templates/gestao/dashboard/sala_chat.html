@@ -4,7 +4,7 @@
 
 {% block content %}
 <style>
-    .chat-container { display:flex; flex-direction:column; height:calc(100vh - 200px); }
+    .chat-container { display:flex; flex-direction:column; height:calc(100vh - 120px); }
     .chat-header { display:flex; align-items:center; gap:14px; padding-bottom:16px; border-bottom:1px solid var(--border); margin-bottom:16px; }
     .chat-messages { flex:1; overflow-y:auto; padding:8px 0; }
     .chat-msg { margin-bottom:16px; display:flex; gap:12px; }
@@ -13,7 +13,7 @@
     .chat-msg-bubble { max-width:75%; padding:14px 18px; border-radius:14px; font-size:14px; line-height:1.6; }
     .chat-msg.agent .chat-msg-bubble { background:white; border:1px solid var(--border); color:var(--text-main); }
     .chat-msg.user .chat-msg-bubble { background:var(--primary); color:white; }
-    .chat-input { display:flex; gap:10px; padding-top:16px; border-top:1px solid var(--border); }
+    .chat-input { display:flex; gap:10px; padding-top:16px; border-top:1px solid var(--border); position:relative; }
     .chat-input textarea { flex:1; padding:12px 16px; border:1px solid var(--border); border-radius:12px; font-size:14px; font-family:'Inter',sans-serif; resize:none; outline:none; min-height:48px; max-height:120px; }
     .chat-input textarea:focus { border-color:var(--primary); }
     .chat-input button { padding:12px 20px; background:var(--primary); color:white; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; }
@@ -37,6 +37,23 @@
     .chat-msg-bubble pre code { background:transparent; color:inherit; }
     .chat-msg-bubble strong { font-weight:700; }
     .chat-msg-bubble blockquote { border-left:3px solid var(--primary); padding:6px 12px; margin:8px 0; background:var(--primary-light); border-radius:0 6px 6px 0; }
+
+    /* Processo steps */
+    .processo-card { background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; padding:16px; margin-top:12px; }
+    .processo-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+    .processo-header i { color:#0284c7; }
+    .processo-header span { font-size:13px; font-weight:700; color:#0c4a6e; }
+    .processo-step { display:flex; align-items:center; gap:10px; padding:8px 12px; margin-bottom:6px; background:white; border-radius:8px; border:1px solid #e0f2fe; }
+    .processo-step-num { width:24px; height:24px; border-radius:50%; background:#0284c7; color:white; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .processo-step-num.done { background:#16a34a; }
+    .processo-step-num.active { background:#f59e0b; animation:pulse 1.5s infinite; }
+    .processo-step-title { flex:1; font-size:13px; color:#1e293b; }
+    .processo-step-btn { padding:5px 12px; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
+    .processo-step-btn.executar { background:#0284c7; color:white; }
+    .processo-step-btn.executar:hover { background:#0369a1; }
+    .processo-step-btn.aguardando { background:#e2e8f0; color:#94a3b8; cursor:not-allowed; }
+    .processo-step-btn.concluido { background:#dcfce7; color:#16a34a; cursor:default; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
 </style>
 
 <div class="chat-container">
@@ -81,30 +98,43 @@
             <div class="chat-msg-avatar" style="background:{% if msg.role == 'user' %}var(--primary){% else %}{{ agente.cor }}15{% endif %}; color:{% if msg.role == 'user' %}white{% else %}{{ agente.cor }}{% endif %};">
                 <i class="fas {% if msg.role == 'user' %}fa-user{% else %}{{ agente.icone }}{% endif %}"></i>
             </div>
-            <div class="chat-msg-bubble">{{ msg.content }}</div>
+            <div class="chat-msg-bubble {% if msg.role != 'user' %}md-render{% endif %}">{{ msg.content }}</div>
         </div>
         {% endfor %}
 
-        <div id="chat-loading" class="chat-loading" style="display:none;">
-            <div class="chat-msg-avatar" style="background:{{ agente.cor }}15; color:{{ agente.cor }}; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
-                <i class="{{ agente.icone }}"></i>
-            </div>
-            <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
-            <span>{{ agente.nome }} est&aacute; pensando...</span>
+    </div>
+
+    <!-- Indicador de pensando (fixo acima do input) -->
+    <div id="chat-loading" class="chat-loading" style="display:none; padding:8px 16px; border-top:1px solid var(--border-light);">
+        <div style="background:{{ agente.cor }}15; color:{{ agente.cor }}; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i class="{{ agente.icone }}" style="font-size:13px;"></i>
         </div>
+        <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+        <span>{{ agente.nome }} est&aacute; pensando...</span>
     </div>
 
     <!-- Input -->
     <div class="chat-input">
-        <textarea id="chat-input" placeholder="Digite sua mensagem..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMsg();}"></textarea>
+        <textarea id="chat-input" placeholder="Mensagem ou /help para comandos..." rows="1" onkeydown="handleInputKey(event)" oninput="handleSlashHint(this)"></textarea>
+        <div id="slash-hints" style="display:none; position:absolute; bottom:100%; left:0; right:80px; background:white; border:1px solid var(--border); border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:6px 0; margin-bottom:8px; max-height:220px; overflow-y:auto; z-index:10;"></div>
         <button id="btn-enviar" onclick="enviarMsg()"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 <script>
 var agenteId = '{{ agente.id }}';
 var csrfToken = '{{ csrf_token }}';
+
+// Agente convidado (quando usa /agentes <slug>)
+var guestAgent = null;
+
+function addSystemMsg(html) {
+    var messagesDiv = document.getElementById('chat-messages');
+    messagesDiv.innerHTML += '<div class="chat-msg agent"><div class="chat-msg-avatar" style="background:#f0f9ff; color:#0369a1;"><i class="fas fa-terminal"></i></div><div class="chat-msg-bubble" style="background:#f0f9ff; border-color:#bae6fd;">' + html + '</div></div>';
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
 
 function enviarMsg() {
     var input = document.getElementById('chat-input');
@@ -114,9 +144,54 @@ function enviarMsg() {
     var messagesDiv = document.getElementById('chat-messages');
     var btn = document.getElementById('btn-enviar');
 
-    var msgEnviada = msg;
+    // Slash commands
+    if (msg.startsWith('/')) {
+        var parts = msg.substring(1).split(' ');
+        var comando = parts[0].toLowerCase();
+        var arg = parts.slice(1).join(' ').trim();
+        input.value = '';
+        document.getElementById('slash-hints').style.display = 'none';
 
-    // Mostrar msg do usuario
+        // /limpar — local
+        if (comando === 'limpar') {
+            document.querySelector('form [name="action"][value="limpar"]').closest('form').submit();
+            return;
+        }
+
+        // Outros comandos — API
+        var displayCmd = arg ? '/' + comando + ' ' + arg : '/' + comando;
+        messagesDiv.innerHTML += '<div class="chat-msg user"><div class="chat-msg-avatar" style="background:var(--primary); color:white;"><i class="fas fa-user"></i></div><div class="chat-msg-bubble" style="font-family:monospace;">' + escapeHtml(displayCmd) + '</div></div>';
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        fetch('{% url "api_slash_command" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify({comando: comando, agente_id: agenteId, arg: arg})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.invoke_agent) {
+                guestAgent = data.invoke_agent;
+                addSystemMsg('<div style="display:flex;align-items:center;gap:8px;"><div style="width:28px;height:28px;border-radius:8px;background:' + guestAgent.cor + '20;display:flex;align-items:center;justify-content:center;"><i class="' + guestAgent.icone + '" style="font-size:12px;color:' + guestAgent.cor + ';"></i></div><strong>' + escapeHtml(guestAgent.nome) + '</strong> entrou no chat. Envie sua pr&oacute;xima mensagem.</div>');
+                document.getElementById('chat-input').placeholder = 'Mensagem para ' + guestAgent.nome + '... (ou /agentes para voltar ao normal)';
+            } else if (data.success) {
+                addSystemMsg(DOMPurify.sanitize(marked.parse(data.resposta)));
+            } else {
+                addSystemMsg('<span style="color:#dc2626;">' + (data.error || 'Erro') + '</span>');
+            }
+        })
+        .catch(function() {
+            addSystemMsg('<span style="color:#dc2626;">Erro de conexão.</span>');
+        });
+        return;
+    }
+
+    // Mensagem normal — pode ir pro agente host ou convidado
+    var targetId = guestAgent ? guestAgent.slug : agenteId;
+    var targetCor = guestAgent ? guestAgent.cor : '{{ agente.cor }}';
+    var targetIcone = guestAgent ? guestAgent.icone : '{{ agente.icone }}';
+    var targetNome = guestAgent ? guestAgent.nome : '{{ agente.nome }}';
+
     messagesDiv.innerHTML += '<div class="chat-msg user"><div class="chat-msg-avatar" style="background:var(--primary); color:white;"><i class="fas fa-user"></i></div><div class="chat-msg-bubble">' + escapeHtml(msg) + '</div></div>';
 
     input.value = '';
@@ -127,25 +202,41 @@ function enviarMsg() {
     fetch('{% url "api_chat_agente" %}', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
-        body: JSON.stringify({agente_id: agenteId, mensagem: msg, modo: 'chat'})
+        body: JSON.stringify({agente_id: targetId, mensagem: msg, modo: 'chat'})
     })
     .then(r => r.json())
     .then(data => {
         document.getElementById('chat-loading').style.display = 'none';
         btn.disabled = false;
         if (data.success) {
-            var html = marked.parse(data.resposta);
-            messagesDiv.innerHTML += '<div class="chat-msg agent"><div class="chat-msg-avatar" style="background:{{ agente.cor }}15; color:{{ agente.cor }};"><i class="{{ agente.icone }}"></i></div><div class="chat-msg-bubble">' + html + '</div></div>';
-            chatHistorico.push({role: 'user', content: msgEnviada});
-            chatHistorico.push({role: 'assistant', content: data.resposta});
+            var html = DOMPurify.sanitize(marked.parse(data.resposta));
+            var nameTag = guestAgent ? '<div style="font-size:11px;font-weight:700;color:' + targetCor + ';margin-bottom:4px;">' + escapeHtml(targetNome) + '</div>' : '';
+
+            // Se tem processo com passos, guardar e mostrar proximo passo
+            if (data.processo_passos && data.processo_passos.passos) {
+                activeProcesso = data.processo_passos;
+            }
+
+            messagesDiv.innerHTML += '<div class="chat-msg agent"><div class="chat-msg-avatar" style="background:' + targetCor + '15; color:' + targetCor + ';"><i class="' + targetIcone + '"></i></div><div class="chat-msg-bubble">' + nameTag + html + '</div></div>';
+
+            // Mostrar botao do proximo passo apos a resposta
+            renderProximoPasso(targetId);
         } else {
             messagesDiv.innerHTML += '<div class="chat-msg agent"><div class="chat-msg-bubble" style="background:#fef2f2; border-color:#fecaca; color:#dc2626;">' + (data.error || 'Erro') + '</div></div>';
         }
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        // Reset guest agent apos responder
+        if (guestAgent) {
+            guestAgent = null;
+            document.getElementById('chat-input').placeholder = 'Mensagem ou /help para comandos...';
+        }
     })
     .catch(e => {
         document.getElementById('chat-loading').style.display = 'none';
         btn.disabled = false;
+        guestAgent = null;
+        document.getElementById('chat-input').placeholder = 'Mensagem ou /help para comandos...';
         messagesDiv.innerHTML += '<div class="chat-msg agent"><div class="chat-msg-bubble" style="background:#fef2f2; border-color:#fecaca; color:#dc2626;">Erro de conexao.</div></div>';
     });
 }
@@ -156,11 +247,8 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Salvar sessao
-var chatHistorico = {{ historico|safe }};
 
 function salvarSessao() {
-    // Coletar historico das mensagens renderizadas + session
     var btn = document.getElementById('btn-salvar-sessao');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
@@ -168,7 +256,7 @@ function salvarSessao() {
     fetch('{% url "api_salvar_sessao" %}', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
-        body: JSON.stringify({agente_id: agenteId, historico: chatHistorico})
+        body: JSON.stringify({agente_id: agenteId})
     })
     .then(r => r.json())
     .then(data => {
@@ -192,8 +280,274 @@ function salvarSessao() {
     });
 }
 
-// Atualizar historico local quando mensagem e enviada
-var _originalEnviar = enviarMsg;
+// Slash command system
+var SLASH_COMMANDS = [
+    {cmd: 'help', desc: 'Lista de comandos disponíveis', hasArgs: false},
+    {cmd: 'tools', desc: 'Ferramentas dos agentes', hasArgs: true},
+    {cmd: 'tarefas', desc: 'Tarefas ativas dos projetos', hasArgs: true},
+    {cmd: 'docs', desc: 'Documentos recentes', hasArgs: true},
+    {cmd: 'projetos', desc: 'Projetos ativos com progresso', hasArgs: true},
+    {cmd: 'agentes', desc: 'Agentes IA ativos', hasArgs: true},
+    {cmd: 'criar_projeto', desc: 'Criar novo projeto', hasArgs: false, action: true},
+    {cmd: 'criar_tarefa', desc: 'Criar tarefa (escolha o projeto)', hasArgs: true, action: true, suggestType: 'projetos'},
+    {cmd: 'criar_etapa', desc: 'Criar etapa (escolha o projeto)', hasArgs: true, action: true, suggestType: 'projetos'},
+    {cmd: 'resumo', desc: 'Resumo de projeto (escolha o projeto)', hasArgs: true, action: true, suggestType: 'projetos'},
+    {cmd: 'automacoes', desc: 'Automações ativas e status', hasArgs: false},
+    {cmd: 'faq', desc: 'FAQs geradas por categoria', hasArgs: true},
+    {cmd: 'health', desc: 'Verificar saúde do sistema agora', hasArgs: false},
+    {cmd: 'limpar', desc: 'Limpar histórico do chat', hasArgs: false},
+];
+var hintSelectedIdx = -1;
+var hintDebounce = null;
+
+function handleInputKey(e) {
+    var hints = document.getElementById('slash-hints');
+    var visible = hints.style.display !== 'none';
+    var items = hints.querySelectorAll('.slash-item');
+
+    if (e.key === 'ArrowDown' && visible && items.length) {
+        e.preventDefault();
+        hintSelectedIdx = Math.min(hintSelectedIdx + 1, items.length - 1);
+        updateHintSelection(items);
+    } else if (e.key === 'ArrowUp' && visible && items.length) {
+        e.preventDefault();
+        hintSelectedIdx = Math.max(hintSelectedIdx - 1, 0);
+        updateHintSelection(items);
+    } else if ((e.key === 'Tab' || e.key === 'Enter') && visible && items.length && hintSelectedIdx >= 0) {
+        e.preventDefault();
+        items[hintSelectedIdx].click();
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        hints.style.display = 'none';
+        enviarMsg();
+    } else if (e.key === 'Escape') {
+        hints.style.display = 'none';
+    }
+}
+
+function updateHintSelection(items) {
+    items.forEach(function(el, i) {
+        el.style.background = i === hintSelectedIdx ? 'var(--bg-page)' : 'transparent';
+    });
+}
+
+function handleSlashHint(el) {
+    var val = el.value;
+    if (!val.startsWith('/')) {
+        document.getElementById('slash-hints').style.display = 'none';
+        return;
+    }
+
+    var parts = val.substring(1).split(' ');
+    var cmd = parts[0].toLowerCase();
+    var busca = parts.slice(1).join(' ');
+
+    // Ainda digitando o comando (sem espaco)
+    if (!val.includes(' ')) {
+        showCommandHints(cmd);
+        return;
+    }
+
+    // Ja tem comando + busca — sugestoes interativas
+    var cmdObj = SLASH_COMMANDS.find(function(c) { return c.cmd === cmd; });
+    if (cmdObj && cmdObj.hasArgs) {
+        clearTimeout(hintDebounce);
+        var suggestType = cmdObj.suggestType || cmd;
+        hintDebounce = setTimeout(function() { fetchSuggestions(suggestType, busca, cmd); }, 200);
+    } else {
+        document.getElementById('slash-hints').style.display = 'none';
+    }
+}
+
+function showCommandHints(query) {
+    var hints = document.getElementById('slash-hints');
+    var matches = SLASH_COMMANDS.filter(function(c) {
+        return query === '' || c.cmd.startsWith(query);
+    });
+
+    if (matches.length > 0) {
+        hintSelectedIdx = 0;
+        var html = '';
+        matches.forEach(function(c, i) {
+            html += '<div class="slash-item" data-value="/' + c.cmd + ' " onclick="pickHint(this)" style="padding:8px 14px; cursor:pointer; display:flex; align-items:center; gap:10px;'
+                 + (i === 0 ? ' background:var(--bg-page);' : '') + '">'
+                 + '<span style="font-family:monospace; font-size:13px; font-weight:700; color:var(--primary); min-width:80px;">/' + c.cmd + '</span>'
+                 + '<span style="font-size:12px; color:var(--text-muted);">' + c.desc + '</span>'
+                 + '</div>';
+        });
+        hints.innerHTML = html;
+        hints.style.display = 'block';
+    } else {
+        hints.style.display = 'none';
+    }
+}
+
+function fetchSuggestions(tipo, busca, originalCmd) {
+    fetch('{% url "api_slash_command" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+        body: JSON.stringify({comando: 'suggest', tipo: tipo, busca: busca})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success && data.items && data.items.length > 0) {
+            var hints = document.getElementById('slash-hints');
+            hintSelectedIdx = 0;
+            var html = '';
+            data.items.forEach(function(item, i) {
+                // Se o comando original é diferente do tipo (ex: criar_tarefa usando suggest de projetos),
+                // reescrever o value para usar o comando original + nome do projeto
+                var itemValue = item.value;
+                if (originalCmd && originalCmd !== tipo) {
+                    itemValue = '/' + originalCmd + ' ' + item.label;
+                }
+                var icon = '';
+                if (item.icon) {
+                    icon = '<div style="width:28px;height:28px;border-radius:8px;background:' + (item.cor || '#eee') + '20;display:flex;align-items:center;justify-content:center;">'
+                         + '<i class="' + item.icon + '" style="font-size:12px;color:' + (item.cor || '#666') + ';"></i></div>';
+                }
+                html += '<div class="slash-item" data-value="' + escapeHtml(itemValue) + '" onclick="pickHint(this)" style="padding:8px 14px; cursor:pointer; display:flex; align-items:center; gap:10px;'
+                     + (i === 0 ? ' background:var(--bg-page);' : '') + '">'
+                     + icon
+                     + '<div style="flex:1;min-width:0;">'
+                     + '<div style="font-size:13px; font-weight:600; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(item.label) + '</div>'
+                     + '<div style="font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(item.sublabel) + '</div>'
+                     + '</div></div>';
+            });
+            hints.innerHTML = html;
+            hints.style.display = 'block';
+        } else {
+            document.getElementById('slash-hints').style.display = 'none';
+        }
+    })
+    .catch(function() {});
+}
+
+function pickHint(el) {
+    var input = document.getElementById('chat-input');
+    var value = el.dataset.value;
+    input.value = value;
+    document.getElementById('slash-hints').style.display = 'none';
+    input.focus();
+
+    // Se o valor nao termina com espaco, executar direto
+    if (!value.endsWith(' ')) {
+        enviarMsg();
+    }
+}
+
+// Fechar hints ao clicar fora
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.chat-input')) {
+        document.getElementById('slash-hints').style.display = 'none';
+    }
+});
+
+// ── Processo step-by-step ──────────────────────
+var activeProcesso = null;
+
+function getProximoPasso() {
+    if (!activeProcesso || !activeProcesso.passos) return null;
+    for (var i = 0; i < activeProcesso.passos.length; i++) {
+        if (activeProcesso.passos[i].status !== 'concluido') return i;
+    }
+    return null; // todos concluidos
+}
+
+function renderProximoPasso(targetAgente) {
+    if (!activeProcesso) return;
+
+    var messagesDiv = document.getElementById('chat-messages');
+    var idx = getProximoPasso();
+
+    // Remover botao anterior se existir
+    var old = document.getElementById('processo-next-step');
+    if (old) old.remove();
+
+    if (idx === null) {
+        // Todos concluidos — mostrar badge de sucesso
+        var concluidos = activeProcesso.passos.length;
+        messagesDiv.innerHTML += '<div id="processo-next-step" style="display:flex; justify-content:center; padding:12px 0;">'
+            + '<div class="processo-card" style="display:inline-flex; align-items:center; gap:8px; padding:10px 16px; background:#dcfce7; border-color:#86efac;">'
+            + '<i class="fas fa-check-circle" style="color:#16a34a;"></i>'
+            + '<span style="font-size:13px; font-weight:600; color:#166534;">Processo conclu\u00eddo — ' + concluidos + ' passos executados</span>'
+            + '</div></div>';
+        activeProcesso = null;
+    } else {
+        var passo = activeProcesso.passos[idx];
+        var progresso = idx + '/' + activeProcesso.passos.length;
+
+        messagesDiv.innerHTML += '<div id="processo-next-step" style="display:flex; justify-content:center; padding:12px 0;">'
+            + '<div class="processo-card" style="display:flex; align-items:center; gap:12px; padding:10px 16px; cursor:pointer;" onclick="executarPasso(' + idx + ', \'' + escapeHtml(targetAgente) + '\')">'
+            + '<div class="processo-step-num">' + passo.numero + '</div>'
+            + '<div style="flex:1;">'
+            + '<div style="font-size:13px; font-weight:600; color:#0c4a6e;">' + escapeHtml(passo.titulo) + '</div>'
+            + '<div style="font-size:11px; color:#64748b;">Passo ' + progresso + ' \u2014 ' + escapeHtml(activeProcesso.titulo) + '</div>'
+            + '</div>'
+            + '<button class="processo-step-btn executar"><i class="fas fa-play"></i> Executar</button>'
+            + '</div></div>';
+    }
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function executarPasso(stepIdx, targetAgente) {
+    if (!activeProcesso || !activeProcesso.passos[stepIdx]) return;
+
+    var passo = activeProcesso.passos[stepIdx];
+    var messagesDiv = document.getElementById('chat-messages');
+    var btn = document.getElementById('btn-enviar');
+
+    // Remover botao do passo
+    var old = document.getElementById('processo-next-step');
+    if (old) old.remove();
+
+    // Montar instrucao para o agente
+    var instrucao = 'Estou executando o passo ' + passo.numero + ' do processo "' + activeProcesso.titulo + '": ' + passo.titulo + '\n\n'
+        + 'Contexto original: ' + activeProcesso.mensagem_original + '\n\n'
+        + 'Instrucoes do passo:\n' + passo.instrucao + '\n\n'
+        + 'Execute SOMENTE este passo agora. Use os blocos de acao necessarios.';
+
+    // Mostrar msg do user
+    messagesDiv.innerHTML += '<div class="chat-msg user"><div class="chat-msg-avatar" style="background:var(--primary); color:white;"><i class="fas fa-user"></i></div><div class="chat-msg-bubble" style="font-size:12px;"><i class="fas fa-play" style="margin-right:4px;"></i> Passo ' + passo.numero + ': ' + escapeHtml(passo.titulo) + '</div></div>';
+
+    btn.disabled = true;
+    document.getElementById('chat-loading').style.display = 'flex';
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    fetch('{% url "api_chat_agente" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+        body: JSON.stringify({agente_id: targetAgente, mensagem: instrucao, modo: 'chat'})
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('chat-loading').style.display = 'none';
+        btn.disabled = false;
+
+        // Marcar como concluido
+        passo.status = 'concluido';
+
+        if (data.success) {
+            var html = DOMPurify.sanitize(marked.parse(data.resposta));
+            messagesDiv.innerHTML += '<div class="chat-msg agent"><div class="chat-msg-avatar" style="background:{{ agente.cor }}15; color:{{ agente.cor }};"><i class="{{ agente.icone }}"></i></div><div class="chat-msg-bubble">' + html + '</div></div>';
+        }
+
+        // Mostrar proximo passo
+        renderProximoPasso(targetAgente);
+    })
+    .catch(e => {
+        document.getElementById('chat-loading').style.display = 'none';
+        btn.disabled = false;
+        // Mostrar botao de novo para tentar de novo
+        renderProximoPasso(targetAgente);
+    });
+}
+
+// Render markdown in history messages on load
+document.querySelectorAll('.md-render').forEach(function(el) {
+    el.innerHTML = DOMPurify.sanitize(marked.parse(el.textContent));
+});
+
 // Scroll to bottom on load
 var m = document.getElementById('chat-messages');
 m.scrollTop = m.scrollHeight;

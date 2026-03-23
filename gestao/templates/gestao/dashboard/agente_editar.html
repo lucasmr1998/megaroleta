@@ -1,0 +1,191 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}{% if agente %}Editar {{ agente.nome }}{% else %}Novo Agente{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <h1 class="page-title">{% if agente %}Editar: {{ agente.nome }}{% else %}Novo Agente{% endif %}</h1>
+    <a href="{% url 'gestao_agentes' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+</div>
+
+<form method="post">
+{% csrf_token %}
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <!-- Dados basicos -->
+    <div class="card" style="padding:24px;">
+        <h3 style="font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:16px;">Dados do Agente</h3>
+
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Nome</label>
+            <input type="text" name="nome" value="{{ agente.nome|default:'' }}" required
+                   style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Slug (ID &uacute;nico)</label>
+            <input type="text" name="slug" value="{{ agente.slug|default:'' }}" required
+                   style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;"
+                   pattern="[a-z0-9_-]+" title="Apenas letras min&uacute;sculas, n&uacute;meros, - e _">
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Descri&ccedil;&atilde;o</label>
+            <input type="text" name="descricao" value="{{ agente.descricao|default:'' }}"
+                   style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div>
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">&Iacute;cone (FontAwesome)</label>
+                <input type="text" name="icone" value="{{ agente.icone|default:'fas fa-robot' }}"
+                       style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Cor</label>
+                <input type="color" name="cor" value="{{ agente.cor|default:'#3b82f6' }}"
+                       style="width:100%; height:38px; border:1px solid var(--border); border-radius:8px; cursor:pointer;">
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div>
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Time</label>
+                <select name="time" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+                    <option value="executivo" {% if agente.time == 'executivo' %}selected{% endif %}>C-Level</option>
+                    <option value="marketing" {% if agente.time == 'marketing' %}selected{% endif %}>Marketing</option>
+                    <option value="sucesso" {% if agente.time == 'sucesso' %}selected{% endif %}>Customer Success</option>
+                    <option value="parcerias" {% if agente.time == 'parcerias' %}selected{% endif %}>Parcerias</option>
+                    <option value="tech" {% if agente.time == 'tech' %}selected{% endif %}>Produto &amp; Tech</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Modelo IA</label>
+                <input type="text" name="modelo" value="{{ agente.modelo|default:'gpt-4o-mini' }}"
+                       style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div>
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Ordem</label>
+                <input type="number" name="ordem" value="{{ agente.ordem|default:0 }}"
+                       style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+            <div style="display:flex; align-items:flex-end; padding-bottom:4px;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="ativo" {% if agente.ativo or not agente %}checked{% endif %}
+                           style="width:18px; height:18px;">
+                    <span style="font-size:14px; font-weight:600;">Ativo</span>
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;"><i class="fas fa-save"></i> Salvar</button>
+    </div>
+
+    <!-- Prompts com abas -->
+    <div>
+        <div style="display:flex; gap:0; margin-bottom:0;">
+            <button type="button" id="tab-chat" onclick="switchTab('chat')" style="
+                padding:10px 20px; font-size:13px; font-weight:600; border:1px solid var(--border);
+                border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer;
+                background:white; color:var(--primary);
+            ">
+                <i class="fas fa-comments"></i> Prompt Chat
+            </button>
+            <button type="button" id="tab-autonomo" onclick="switchTab('autonomo')" style="
+                padding:10px 20px; font-size:13px; font-weight:600; border:1px solid var(--border);
+                border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer;
+                background:var(--bg-secondary); color:var(--text-muted);
+            ">
+                <i class="fas fa-robot"></i> Prompt Aut&ocirc;nomo
+                {% if not agente.prompt_autonomo %}<span id="badge-vazio" style="font-size:10px; background:#fbbf24; color:#000; padding:1px 6px; border-radius:10px; margin-left:4px;">vazio</span>{% endif %}
+            </button>
+        </div>
+
+        <!-- Aba Chat -->
+        <div id="panel-chat">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#f0f7ff; border:1px solid var(--border); border-top:2px solid var(--primary);">
+                <span style="font-size:11px; color:var(--text-muted);">Usado quando o CEO conversa com o agente na sala</span>
+                <span id="char-count-chat" style="font-size:12px; color:var(--text-muted);"></span>
+            </div>
+            <textarea name="prompt" id="prompt-chat" style="
+                width:100%; min-height:calc(100vh - 280px);
+                padding:16px; border:1px solid var(--border); border-top:none; border-radius:0 0 12px 12px;
+                font-family:'JetBrains Mono', 'Fira Code', monospace; font-size:13px;
+                line-height:1.6; resize:vertical; outline:none; background:white;
+                tab-size:2;
+            " oninput="updateCounts()">{{ agente.prompt|default:'' }}</textarea>
+        </div>
+
+        <!-- Aba Autonomo -->
+        <div id="panel-autonomo" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#fef3c7; border:1px solid var(--border); border-top:2px solid #f59e0b;">
+                <span style="font-size:11px; color:var(--text-muted);">Usado na rotina aut&ocirc;noma (automa&ccedil;&otilde;es). Se vazio, usa o prompt de chat.</span>
+                <span id="char-count-autonomo" style="font-size:12px; color:var(--text-muted);"></span>
+            </div>
+            <textarea name="prompt_autonomo" id="prompt-autonomo" style="
+                width:100%; min-height:calc(100vh - 280px);
+                padding:16px; border:1px solid var(--border); border-top:none; border-radius:0 0 12px 12px;
+                font-family:'JetBrains Mono', 'Fira Code', monospace; font-size:13px;
+                line-height:1.6; resize:vertical; outline:none; background:white;
+                tab-size:2;
+            " oninput="updateCounts()">{{ agente.prompt_autonomo|default:'' }}</textarea>
+        </div>
+    </div>
+</div>
+</form>
+
+<script>
+function switchTab(tab) {
+    var chatPanel = document.getElementById('panel-chat');
+    var autoPanel = document.getElementById('panel-autonomo');
+    var tabChat = document.getElementById('tab-chat');
+    var tabAuto = document.getElementById('tab-autonomo');
+
+    if (tab === 'chat') {
+        chatPanel.style.display = 'block';
+        autoPanel.style.display = 'none';
+        tabChat.style.background = 'white';
+        tabChat.style.color = 'var(--primary)';
+        tabAuto.style.background = 'var(--bg-secondary)';
+        tabAuto.style.color = 'var(--text-muted)';
+    } else {
+        chatPanel.style.display = 'none';
+        autoPanel.style.display = 'block';
+        tabAuto.style.background = 'white';
+        tabAuto.style.color = '#f59e0b';
+        tabChat.style.background = 'var(--bg-secondary)';
+        tabChat.style.color = 'var(--text-muted)';
+    }
+}
+
+function updateCounts() {
+    var chatLen = document.getElementById('prompt-chat').value.length;
+    var autoLen = document.getElementById('prompt-autonomo').value.length;
+    document.getElementById('char-count-chat').textContent = chatLen.toLocaleString() + ' caracteres';
+    document.getElementById('char-count-autonomo').textContent = autoLen.toLocaleString() + ' caracteres';
+
+    // Atualizar badge vazio
+    var badge = document.getElementById('badge-vazio');
+    if (badge) {
+        badge.style.display = autoLen > 0 ? 'none' : 'inline';
+    }
+}
+updateCounts();
+
+// Tab support nos dois textareas
+['prompt-chat', 'prompt-autonomo'].forEach(function(id) {
+    document.getElementById(id).addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            var start = this.selectionStart;
+            var end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 2;
+        }
+    });
+});
+</script>
+{% endblock %}

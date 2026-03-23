@@ -18,9 +18,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import RedirectView
 
 urlpatterns = [
-    path('', include('roleta.urls')),
+    path('', RedirectView.as_view(url='/roleta/', permanent=False)),
     path('admin/', admin.site.urls),
     path('roleta/', include('roleta.urls')),
     path('roleta/', include('parceiros.urls')),

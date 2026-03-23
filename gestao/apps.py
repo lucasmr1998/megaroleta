@@ -4,3 +4,6 @@ class GestaoConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'gestao'
     verbose_name = 'Gestão de Projetos'
+
+    def ready(self):
+        import gestao.signals  # noqa: F401

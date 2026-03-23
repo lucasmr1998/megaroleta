@@ -1,0 +1,128 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}FAQs Geradas — Automações{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <div>
+        <a href="{% url 'gestao_automacoes' %}" style="color:#64748b; text-decoration:none; font-size:13px; font-weight:600;">
+            <i class="fas fa-arrow-left"></i> Automações
+        </a>
+        <h2 style="font-size:22px; font-weight:800; color:#1e293b; margin:6px 0 0;">
+            <i class="fas fa-question-circle" style="color:#3b82f6;"></i> FAQs Geradas
+        </h2>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center;">
+        <span style="font-size:13px; color:#64748b;">
+            <strong style="color:#1e293b;">{{ total_ativos }}</strong> ativas de {{ total_itens }}
+            &middot; <strong style="color:#3b82f6;">{{ total_ia }}</strong> por IA
+        </span>
+    </div>
+</div>
+
+{% for cat in categorias %}
+{% if cat.itens.all %}
+<div style="background:white; border-radius:16px; padding:24px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid #f1f5f9;">
+        <div style="width:40px; height:40px; border-radius:10px; background:{{ cat.cor }}15; color:{{ cat.cor }}; display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="{{ cat.icone }}"></i>
+        </div>
+        <div>
+            <h3 style="font-size:16px; font-weight:800; color:#1e293b; margin:0;">{{ cat.nome }}</h3>
+            <span style="font-size:12px; color:#94a3b8;">{{ cat.itens.all|length }} perguntas</span>
+        </div>
+    </div>
+
+    {% for item in cat.itens.all %}
+    <div style="border:1px solid {% if not item.ativo %}#fee2e2{% else %}#e5e7eb{% endif %}; border-radius:12px; padding:16px; margin-bottom:10px; {% if not item.ativo %}opacity:0.5;{% endif %}" id="faq-{{ item.id }}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div style="flex:1;">
+                <div style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:6px;">
+                    {{ item.pergunta }}
+                </div>
+                <div style="font-size:13px; color:#64748b; line-height:1.6;">
+                    {{ item.resposta }}
+                </div>
+                <div style="display:flex; gap:12px; margin-top:8px; font-size:11px; color:#94a3b8;">
+                    {% if item.gerado_por_ia %}
+                    <span><i class="fas fa-robot"></i> Gerado por IA</span>
+                    {% else %}
+                    <span><i class="fas fa-pen"></i> Editado manualmente</span>
+                    {% endif %}
+                    <span><i class="fas fa-clock"></i> {{ item.data_atualizacao|timesince }} atrás</span>
+                    {% if not item.ativo %}
+                    <span style="color:#ef4444;"><i class="fas fa-eye-slash"></i> Desativada</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button onclick="editarFAQ({{ item.id }})" style="background:#f1f5f9; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px; color:#64748b;" title="Editar">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <form method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="toggle">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <button type="submit" style="background:{% if item.ativo %}#fee2e2{% else %}#d1fae5{% endif %}; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px; color:{% if item.ativo %}#ef4444{% else %}#059669{% endif %};" title="{% if item.ativo %}Desativar{% else %}Ativar{% endif %}">
+                        <i class="fas fa-{% if item.ativo %}eye-slash{% else %}eye{% endif %}"></i>
+                    </button>
+                </form>
+                <form method="post" style="margin:0;" onsubmit="return confirm('Excluir esta FAQ?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="excluir">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <button type="submit" style="background:#fee2e2; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px; color:#ef4444;" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de edição inline (hidden) -->
+    <div id="edit-{{ item.id }}" style="display:none; border:2px solid #3b82f6; border-radius:12px; padding:16px; margin-bottom:10px; background:#f8fafc;">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="editar">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">Pergunta</label>
+                <input type="text" name="pergunta" value="{{ item.pergunta }}" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:12px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">Resposta</label>
+                <textarea name="resposta" rows="3" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; resize:vertical; box-sizing:border-box;">{{ item.resposta }}</textarea>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" style="background:#3b82f6; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+                <button type="button" onclick="cancelarEdicao({{ item.id }})" style="background:#f1f5f9; color:#64748b; border:none; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endfor %}
+
+{% if not categorias %}
+<div style="background:white; border-radius:16px; padding:48px; text-align:center; color:#94a3b8;">
+    <i class="fas fa-question-circle" style="font-size:40px; margin-bottom:12px;"></i>
+    <p>Nenhuma FAQ gerada ainda. Execute a automação "Gerador de FAQ" primeiro.</p>
+</div>
+{% endif %}
+
+<script>
+function editarFAQ(id) {
+    document.getElementById('faq-' + id).style.display = 'none';
+    document.getElementById('edit-' + id).style.display = 'block';
+}
+function cancelarEdicao(id) {
+    document.getElementById('edit-' + id).style.display = 'none';
+    document.getElementById('faq-' + id).style.display = 'block';
+}
+</script>
+{% endblock %}

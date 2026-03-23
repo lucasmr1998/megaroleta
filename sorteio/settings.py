@@ -25,12 +25,12 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!-m-ux%9=q)tgz2r6u+g0twb0@jhqy_njr$4)10-&__ruza(%u'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-only-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -60,7 +60,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'sorteio.urls'
-import os
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -72,6 +72,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'gestao.context_processors.gestao_badges',
             ],
         },
     },
@@ -86,16 +87,25 @@ WSGI_APPLICATION = 'sorteio.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'megasorteio',
-        'USER': 'admin',
-        'PASSWORD': 'qualidade@trunks.57',
-        'HOST': '187.62.153.52',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'megasorteio'),
+        'USER': os.getenv('DB_USER', 'admin'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
             'connect_timeout': 30,
             'options': '-c statement_timeout=30000',  # 30 segundos
         },
         'CONN_MAX_AGE': 600,  # Manter conexão por 10 minutos
+    }
+}
+
+# Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'gestao-cache',
+        'TIMEOUT': 300,  # 5 minutos
     }
 }
 
@@ -188,6 +198,21 @@ LOGGING = {
         'clientes': {
             'level': 'INFO',
             'handlers': ['console', 'file'],
+            'propagate': False,
+        },
+        'roleta': {
+            'level': 'INFO',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'parceiros': {
+            'level': 'INFO',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'gestao': {
+            'level': 'INFO',
+            'handlers': ['console'],
             'propagate': False,
         },
     },

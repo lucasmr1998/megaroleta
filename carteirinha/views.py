@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import Http404
 from .models import ModeloCarteirinha, RegraAtribuicao, CarteirinhaMembro
 from .services import CarteirinhaService
@@ -24,6 +25,7 @@ def dashboard_carteirinha(request):
 
 
 @login_required(login_url='/roleta/dashboard/login/')
+@transaction.atomic
 def dashboard_modelos(request):
     """CRUD de modelos de carteirinha."""
     if request.method == 'POST':
@@ -114,6 +116,7 @@ def dashboard_modelo_criar(request):
 
 
 @login_required(login_url='/roleta/dashboard/login/')
+@transaction.atomic
 def dashboard_modelo_editar(request, modelo_id):
     """Pagina de edicao de modelo com preview em tempo real."""
     modelo = get_object_or_404(ModeloCarteirinha, id=modelo_id)

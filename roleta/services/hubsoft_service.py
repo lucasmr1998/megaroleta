@@ -1,6 +1,22 @@
+import logging
+import os
 import requests
 
+
 class HubsoftService:
+
+    @staticmethod
+    def _get_hubsoft_connection(connect_timeout=10):
+        """Cria conexão com o banco Hubsoft usando variáveis de ambiente."""
+        import psycopg2
+        return psycopg2.connect(
+            user=os.getenv('HUBSOFT_DB_USER', ''),
+            password=os.getenv('HUBSOFT_DB_PASSWORD', ''),
+            host=os.getenv('HUBSOFT_DB_HOST', ''),
+            port=os.getenv('HUBSOFT_DB_PORT', '9432'),
+            database=os.getenv('HUBSOFT_DB_NAME', 'hubsoft'),
+            connect_timeout=connect_timeout,
+        )
     @staticmethod
     def consultar_cliente(cpf: str):
         """
@@ -32,23 +48,16 @@ class HubsoftService:
                         return cliente_data
             return None
         except Exception as e:
-            print(f"Erro ao comunicar com HubsoftService: {str(e)}")
+            logging.getLogger(__name__).warning(f"Erro ao comunicar com HubsoftService: {e}")
             return None
 
     @staticmethod
     def checar_pontos_extras_cpf(cpf: str):
-        import psycopg2
         import datetime
         from django.utils import timezone
 
         try:
-            connection = psycopg2.connect(
-                user="mega_leitura",
-                password="4630a1512ee8e738f935a73a65cebf75b07fcab5",
-                host="177.10.118.77",
-                port="9432",
-                database="hubsoft"
-            )
+            connection = HubsoftService._get_hubsoft_connection()
             # Formatação de CPF para busca no banco
             cpf_clean = cpf.replace('.', '').replace('-', '').replace('/', '')
 
@@ -121,21 +130,13 @@ class HubsoftService:
                 }
             return None
         except Exception as e:
-            print(f"Erro ao consultar_pontos_extras_cpf na HubsoftService: {e}")
+            logging.getLogger(__name__).warning(f"Erro ao consultar_pontos_extras_cpf: {e}")
             return None
 
     @staticmethod
     def consultar_cidade_cliente_cpf(cpf: str):
-        import psycopg2
-
         try:
-            connection = psycopg2.connect(
-                user="mega_leitura",
-                password="4630a1512ee8e738f935a73a65cebf75b07fcab5",
-                host="177.10.118.77",
-                port="9432",
-                database="hubsoft"
-            )
+            connection = HubsoftService._get_hubsoft_connection()
             cpf_clean = cpf.replace('.', '').replace('-', '').replace('/', '')
 
             sql_query = """
@@ -167,24 +168,25 @@ class HubsoftService:
                 return row[0].strip()
             return None
         except Exception as e:
-            print(f"Erro ao consultar_cidade_cliente_cpf na HubsoftService: {e}")
+            logging.getLogger(__name__).warning(f"Erro ao consultar_cidade_cliente_cpf: {e}")
             return None
 
     @staticmethod
     def consultar_clientes_por_cidade():
         """
         Retorna um dict {cidade: quantidade_clientes} com todos os clientes ativos do Hubsoft.
+        Cache de 1 hora via Django cache framework (funciona multi-worker).
         """
-        import psycopg2
+        import logging
+        from django.core.cache import cache
+
+        CACHE_KEY = 'hubsoft_clientes_por_cidade'
+        cached = cache.get(CACHE_KEY)
+        if cached is not None:
+            return cached
 
         try:
-            connection = psycopg2.connect(
-                user="mega_leitura",
-                password="4630a1512ee8e738f935a73a65cebf75b07fcab5",
-                host="177.10.118.77",
-                port="9432",
-                database="hubsoft"
-            )
+            connection = HubsoftService._get_hubsoft_connection()
 
             sql_query = """
                 SELECT
@@ -211,7 +213,13 @@ class HubsoftService:
                     cursor.execute(sql_query)
                     rows = cursor.fetchall()
 
-            return {row[0].strip(): row[1] for row in rows if row[0]}
+            resultado = {row[0].strip(): row[1] for row in rows if row[0]}
+
+            # Cache por 1 hora (3600 segundos)
+            cache.set(CACHE_KEY, resultado, 3600)
+
+            return resultado
         except Exception as e:
-            print(f"Erro ao consultar_clientes_por_cidade na HubsoftService: {e}")
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Erro ao consultar_clientes_por_cidade: {e}")
             return {}

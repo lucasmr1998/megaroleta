@@ -1,0 +1,205 @@
+{% extends 'roleta/dashboard/base.html' %}
+{% load gestao_tags %}
+
+{% block title %}Propostas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Propostas dos Agentes</h1>
+    <p class="page-subtitle">Acoes propostas pelos agentes aguardando sua aprovacao.</p>
+</div>
+
+<!-- KPIs -->
+<div class="stats-grid" style="grid-template-columns:repeat(4, 1fr); margin-bottom:24px;">
+    <a href="?filtro=pendentes" class="stat-card" style="text-decoration:none; cursor:pointer; {% if filtro == 'pendentes' %}border:2px solid var(--warning);{% endif %}">
+        <div class="stat-label">Pendentes</div>
+        <div class="stat-value" style="color:var(--warning);">{{ pendentes }}</div>
+    </a>
+    <a href="?filtro=aprovadas" class="stat-card" style="text-decoration:none; cursor:pointer; {% if filtro == 'aprovadas' %}border:2px solid var(--info);{% endif %}">
+        <div class="stat-label">Aprovadas</div>
+        <div class="stat-value" style="color:var(--info);">{{ aprovadas }}</div>
+    </a>
+    <a href="?filtro=executadas" class="stat-card" style="text-decoration:none; cursor:pointer; {% if filtro == 'executadas' %}border:2px solid var(--success);{% endif %}">
+        <div class="stat-label">Executadas</div>
+        <div class="stat-value" style="color:var(--success);">{{ executadas }}</div>
+    </a>
+    <a href="?filtro=rejeitadas" class="stat-card" style="text-decoration:none; cursor:pointer; {% if filtro == 'rejeitadas' %}border:2px solid var(--danger);{% endif %}">
+        <div class="stat-label">Rejeitadas</div>
+        <div class="stat-value" style="color:var(--danger);">{{ rejeitadas }}</div>
+    </a>
+</div>
+
+<!-- Lista de Propostas -->
+{% for p in propostas %}
+<div class="card" style="padding:0; margin-bottom:16px; overflow:hidden; {% if p.prioridade == 'critica' %}border-left:4px solid var(--danger);{% elif p.prioridade == 'alta' %}border-left:4px solid var(--warning);{% elif p.prioridade == 'media' %}border-left:4px solid var(--info);{% else %}border-left:4px solid var(--border-light);{% endif %}">
+
+    <!-- Header -->
+    <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-light);">
+        <div style="display:flex; align-items:center; gap:10px;">
+            {% if p.agente %}
+            <div style="width:36px; height:36px; border-radius:10px; background:{{ p.agente.cor }}15; display:flex; align-items:center; justify-content:center;">
+                <i class="{{ p.agente.icone }}" style="color:{{ p.agente.cor }}; font-size:14px;"></i>
+            </div>
+            <div>
+                <span style="font-size:13px; font-weight:700; color:{{ p.agente.cor }};">{{ p.agente.nome }}</span>
+                <span style="font-size:12px; color:var(--text-muted);"> &middot; {{ p.data_criacao|timesince }} atras</span>
+            </div>
+            {% endif %}
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+            {% if p.prioridade == 'critica' %}<span class="badge badge-danger">Critica</span>
+            {% elif p.prioridade == 'alta' %}<span class="badge badge-warning">Alta</span>
+            {% elif p.prioridade == 'media' %}<span class="badge badge-info">Media</span>
+            {% else %}<span class="badge" style="background:var(--border-light); color:var(--text-muted);">Baixa</span>{% endif %}
+
+            {% if p.status == 'pendente' %}<span class="badge" style="background:#fef3c7; color:#92400e;">Pendente</span>
+            {% elif p.status == 'executada' %}<span class="badge badge-success">Executada</span>
+            {% elif p.status == 'rejeitada' %}<span class="badge badge-danger">Rejeitada</span>
+            {% elif p.status == 'erro' %}<span class="badge badge-danger">Erro</span>{% endif %}
+        </div>
+    </div>
+
+    <!-- Corpo -->
+    <div style="padding:16px 20px;">
+        <!-- Titulo -->
+        <h3 style="font-size:16px; font-weight:700; margin:0 0 10px 0;">
+            <a href="{% url 'gestao_proposta_detalhe' p.id %}" style="color:var(--text-main); text-decoration:none;">{{ p.titulo }}</a>
+        </h3>
+
+        <!-- O que vai acontecer (preview da acao) -->
+        {% if p.dados_execucao and p.dados_execucao.tool_slug %}
+        <div style="padding:12px 16px; background:#f0fdf4; border-radius:8px; margin-bottom:12px; border:1px solid #bbf7d0;">
+            <div style="font-size:11px; font-weight:700; color:#059669; text-transform:uppercase; margin-bottom:6px;">
+                <i class="fas fa-play-circle" style="margin-right:4px;"></i>Ao aprovar
+            </div>
+            <div style="font-size:14px; color:#166534;">
+                {% if p.dados_execucao.tool_slug == 'criar_tarefa' %}
+                    <i class="fas fa-plus-circle" style="margin-right:4px;"></i>
+                    Criar tarefa: <strong>{{ p.titulo|cut:"QA: "|cut:"Customer Marketing: "|cut:"Analista de Dados: " }}</strong>
+                    {% with bloco=p.dados_execucao.bloco %}
+                        {% if 'projeto:' in bloco %}
+                        <br><span style="font-size:12px; color:#15803d;">Projeto: {{ bloco|extract_field:"projeto" }}</span>
+                        {% endif %}
+                    {% endwith %}
+                {% elif p.dados_execucao.tool_slug == 'criar_projeto' %}
+                    <i class="fas fa-folder-plus" style="margin-right:4px;"></i>Criar projeto
+                {% elif p.dados_execucao.tool_slug == 'salvar_documento' %}
+                    <i class="fas fa-save" style="margin-right:4px;"></i>Salvar documento
+                {% elif p.dados_execucao.tool_slug == 'atualizar_projeto' %}
+                    <i class="fas fa-edit" style="margin-right:4px;"></i>Atualizar projeto
+                {% else %}
+                    <i class="fas fa-cog" style="margin-right:4px;"></i>Executar: {{ p.dados_execucao.tool_slug }}
+                {% endif %}
+            </div>
+        </div>
+        {% elif p.tool %}
+        <div style="padding:10px 14px; background:var(--bg-main); border-radius:8px; margin-bottom:12px; font-size:13px; color:var(--text-muted);">
+            <i class="{{ p.tool.icone }}" style="margin-right:4px;"></i>
+            Tool: <strong>{{ p.tool.nome }}</strong>
+        </div>
+        {% endif %}
+
+        <!-- Alerta de origem -->
+        {% if p.alerta %}
+        <div style="padding:10px 14px; background:#fef2f2; border-radius:8px; margin-bottom:12px; font-size:13px;">
+            <i class="fas fa-bell" style="margin-right:4px; color:var(--danger);"></i>
+            Originado do alerta: <strong>{{ p.alerta.titulo }}</strong>
+        </div>
+        {% endif %}
+
+        <!-- Resultado (se executada) -->
+        {% if p.resultado_execucao %}
+        <div style="padding:10px 14px; background:var(--bg-main); border-radius:8px; margin-bottom:12px; font-size:13px; font-family:monospace; white-space:pre-wrap;">{{ p.resultado_execucao|truncatechars:200 }}</div>
+        {% endif %}
+
+        <!-- Motivo rejeicao -->
+        {% if p.motivo_rejeicao %}
+        <div style="padding:10px 14px; background:#fef2f2; border-radius:8px; margin-bottom:12px; font-size:13px;">
+            <strong>Motivo:</strong> {{ p.motivo_rejeicao }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Acoes (se pendente) -->
+    {% if p.status == 'pendente' %}
+    <div style="padding:12px 20px; background:var(--bg-page); border-top:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
+        <a href="{% url 'gestao_proposta_detalhe' p.id %}" style="font-size:13px; color:var(--primary); font-weight:600; text-decoration:none;">
+            <i class="fas fa-eye" style="margin-right:4px;"></i>Ver detalhes
+        </a>
+        <div style="display:flex; gap:8px;">
+            <form method="post" action="{% url 'gestao_proposta_aprovar' p.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success" style="padding:8px 20px; font-size:13px;">
+                    <i class="fas fa-check" style="margin-right:4px;"></i>
+                    {% if p.dados_execucao and p.dados_execucao.bloco %}Aprovar e Executar{% else %}Aprovar{% endif %}
+                </button>
+            </form>
+            <button type="button" class="btn btn-danger" style="padding:8px 20px; font-size:13px;" onclick="document.getElementById('rejeitar-{{ p.id }}').style.display='flex'">
+                <i class="fas fa-times" style="margin-right:4px;"></i>Rejeitar
+            </button>
+        </div>
+    </div>
+
+    <!-- Form de rejeicao (hidden) -->
+    <form method="post" action="{% url 'gestao_proposta_rejeitar' p.id %}" id="rejeitar-{{ p.id }}" style="display:none; padding:12px 20px; background:var(--bg-page); border-top:1px solid var(--border-light); align-items:center; gap:8px;">
+        {% csrf_token %}
+        <input type="text" name="motivo" placeholder="Motivo da rejeicao (opcional)" style="flex:1; padding:8px 12px; border:1px solid var(--border-light); border-radius:6px; font-size:13px;">
+        <button type="submit" class="btn btn-danger" style="padding:8px 16px; font-size:13px;">Confirmar</button>
+        <button type="button" class="btn" style="padding:8px 16px; background:var(--bg-main); font-size:13px;" onclick="this.closest('form').style.display='none'">Cancelar</button>
+    </form>
+    {% endif %}
+</div>
+{% empty %}
+<div class="card" style="padding:40px; text-align:center;">
+    <i class="fas fa-inbox" style="font-size:48px; color:var(--border-light); margin-bottom:16px;"></i>
+    <h3 style="font-size:16px; color:var(--text-muted); margin-bottom:8px;">
+        {% if filtro == 'pendentes' %}Nenhuma proposta pendente
+        {% elif filtro == 'aprovadas' %}Nenhuma proposta aprovada
+        {% elif filtro == 'executadas' %}Nenhuma proposta executada
+        {% elif filtro == 'rejeitadas' %}Nenhuma proposta rejeitada
+        {% else %}Nenhuma proposta{% endif %}
+    </h3>
+    <p style="font-size:14px; color:var(--text-muted);">
+        Quando os agentes identificarem acoes necessarias, as propostas aparecerao aqui.
+    </p>
+</div>
+{% endfor %}
+
+{% if propostas.has_other_pages %}
+<div style="display:flex; justify-content:center; align-items:center; gap:4px; margin-top:16px; padding:12px 0;">
+    {% if propostas.has_previous %}
+    <a href="?page={{ propostas.previous_page_number }}{% if filtro %}&filtro={{ filtro }}{% endif %}" class="page-btn">&laquo;</a>
+    {% endif %}
+    {% for num in propostas.paginator.page_range %}
+        {% if propostas.number == num %}
+        <span class="page-btn active">{{ num }}</span>
+        {% elif num > propostas.number|add:'-3' and num < propostas.number|add:'3' %}
+        <a href="?page={{ num }}{% if filtro %}&filtro={{ filtro }}{% endif %}" class="page-btn">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if propostas.has_next %}
+    <a href="?page={{ propostas.next_page_number }}{% if filtro %}&filtro={{ filtro }}{% endif %}" class="page-btn">&raquo;</a>
+    {% endif %}
+    <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ propostas.paginator.count }} total</span>
+</div>
+{% endif %}
+
+{% if filtro != 'todas' %}
+<div style="text-align:center; margin-top:20px;">
+    <a href="?filtro=todas" style="font-size:13px; color:var(--primary);">Ver todas as propostas &rarr;</a>
+</div>
+{% endif %}
+
+<style>
+.page-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:32px; height:32px; padding:0 8px;
+    border-radius:8px; font-size:13px; font-weight:600;
+    color:var(--text-muted); text-decoration:none;
+    border:1px solid var(--border-light); background:white;
+    transition:all 0.15s; cursor:pointer;
+}
+.page-btn:hover { background:var(--bg-page); color:var(--primary); border-color:var(--primary); }
+.page-btn.active { background:var(--primary); color:white; border-color:var(--primary); cursor:default; }
+</style>
+{% endblock %}

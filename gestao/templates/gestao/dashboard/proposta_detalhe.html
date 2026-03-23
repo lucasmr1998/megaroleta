@@ -1,0 +1,182 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Proposta: {{ proposta.titulo }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            {% if proposta.prioridade == 'critica' %}<span class="badge badge-danger">Cr&iacute;tica</span>
+            {% elif proposta.prioridade == 'alta' %}<span class="badge badge-warning">Alta</span>
+            {% elif proposta.prioridade == 'media' %}<span class="badge badge-info">M&eacute;dia</span>
+            {% else %}<span class="badge" style="background:var(--border-light); color:var(--text-muted);">Baixa</span>{% endif %}
+
+            {% if proposta.status == 'pendente' %}<span class="badge" style="background:#fef3c7; color:#92400e;">Pendente</span>
+            {% elif proposta.status == 'aprovada' %}<span class="badge badge-info">Aprovada</span>
+            {% elif proposta.status == 'executada' %}<span class="badge badge-success">Executada</span>
+            {% elif proposta.status == 'rejeitada' %}<span class="badge badge-danger">Rejeitada</span>
+            {% elif proposta.status == 'erro' %}<span class="badge badge-danger">Erro</span>{% endif %}
+        </div>
+        <h1 class="page-title">{{ proposta.titulo }}</h1>
+    </div>
+    <a href="{% url 'gestao_propostas' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:20px;">
+    <!-- Coluna principal -->
+    <div>
+        <!-- Descri&ccedil;&atilde;o -->
+        <div class="card" style="padding:24px; margin-bottom:16px;">
+            <div class="card-title"><i class="fas fa-align-left" style="margin-right:6px;"></i>Descri&ccedil;&atilde;o</div>
+            <p style="font-size:14px; line-height:1.7; color:var(--text-main); white-space:pre-wrap;">{{ proposta.descricao }}</p>
+        </div>
+
+        <!-- Alerta de origem -->
+        {% if proposta.alerta %}
+        <div class="card" style="padding:20px; margin-bottom:16px; border-left:4px solid var(--danger);">
+            <div class="card-title"><i class="fas fa-bell" style="color:var(--danger); margin-right:6px;"></i>Alerta de Origem</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                {% if proposta.alerta.severidade == 'critico' %}<span class="badge badge-danger">Cr&iacute;tico</span>
+                {% elif proposta.alerta.severidade == 'aviso' %}<span class="badge badge-warning">Aviso</span>
+                {% else %}<span class="badge badge-info">Info</span>{% endif %}
+                <span class="badge" style="background:var(--bg-main); color:var(--text-muted);">{{ proposta.alerta.get_tipo_display }}</span>
+            </div>
+            <h4 style="font-size:15px; margin:0 0 6px;">{{ proposta.alerta.titulo }}</h4>
+            {% if proposta.alerta.descricao %}
+            <p style="font-size:13px; color:var(--text-muted); white-space:pre-wrap;">{{ proposta.alerta.descricao }}</p>
+            {% endif %}
+            <small style="color:var(--text-muted);">{{ proposta.alerta.data_criacao|date:"d/m/Y H:i" }}</small>
+        </div>
+        {% endif %}
+
+        <!-- Resultado da execu&ccedil;&atilde;o -->
+        {% if proposta.resultado_execucao %}
+        <div class="card" style="padding:20px; margin-bottom:16px;">
+            <div class="card-title">
+                {% if proposta.status == 'executada' %}
+                <i class="fas fa-check-circle" style="color:var(--success); margin-right:6px;"></i>Resultado da Execu&ccedil;&atilde;o
+                {% else %}
+                <i class="fas fa-exclamation-circle" style="color:var(--danger); margin-right:6px;"></i>Resultado (com erro)
+                {% endif %}
+            </div>
+            <pre style="font-size:13px; background:var(--bg-main); padding:16px; border-radius:8px; overflow-x:auto; white-space:pre-wrap; margin:0;">{{ proposta.resultado_execucao }}</pre>
+        </div>
+        {% endif %}
+
+        <!-- Motivo da rejei&ccedil;&atilde;o -->
+        {% if proposta.motivo_rejeicao %}
+        <div class="card" style="padding:20px; margin-bottom:16px; border-left:4px solid var(--danger);">
+            <div class="card-title"><i class="fas fa-times-circle" style="color:var(--danger); margin-right:6px;"></i>Motivo da Rejei&ccedil;&atilde;o</div>
+            <p style="font-size:14px; color:var(--text-main);">{{ proposta.motivo_rejeicao }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Logs relacionados -->
+        {% if logs %}
+        <div class="card" style="padding:20px;">
+            <div class="card-title"><i class="fas fa-history" style="margin-right:6px;"></i>Hist&oacute;rico de Execu&ccedil;&otilde;es ({{ proposta.tool.nome }})</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Status</th>
+                        <th>Resultado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="white-space:nowrap;">{{ log.data_criacao|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if log.sucesso %}<span class="badge badge-success">OK</span>
+                            {% else %}<span class="badge badge-danger">Erro</span>{% endif %}
+                        </td>
+                        <td style="font-size:12px; max-width:400px; overflow:hidden; text-overflow:ellipsis;">{{ log.resultado|truncatechars:150 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+        <!-- Metadados -->
+        <div class="card" style="padding:20px; margin-bottom:16px;">
+            <div class="card-title">Detalhes</div>
+            <div style="display:flex; flex-direction:column; gap:14px; font-size:13px;">
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Agente</div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <i class="{{ proposta.agente.icone }}" style="color:{{ proposta.agente.cor }};"></i>
+                        <strong>{{ proposta.agente.nome }}</strong>
+                    </div>
+                    <small style="color:var(--text-muted);">{{ proposta.agente.descricao }}</small>
+                </div>
+
+                {% if proposta.tool %}
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Ferramenta</div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <i class="{{ proposta.tool.icone }}" style="color:var(--primary);"></i>
+                        <strong>{{ proposta.tool.nome }}</strong>
+                    </div>
+                    <small style="color:var(--text-muted);">{{ proposta.tool.descricao }}</small>
+                </div>
+                {% endif %}
+
+                {% if proposta.reuniao %}
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Reuni&atilde;o</div>
+                    <a href="{% url 'sala_reuniao' proposta.reuniao.id %}" style="color:var(--primary); font-weight:600;">
+                        <i class="fas fa-users" style="margin-right:4px;"></i>{{ proposta.reuniao.nome }}
+                    </a>
+                </div>
+                {% endif %}
+
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Criada em</div>
+                    <div>{{ proposta.data_criacao|date:"d/m/Y H:i" }}</div>
+                </div>
+
+                {% if proposta.data_decisao %}
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Decis&atilde;o em</div>
+                    <div>{{ proposta.data_decisao|date:"d/m/Y H:i" }}</div>
+                </div>
+                {% endif %}
+
+                {% if proposta.data_execucao %}
+                <div>
+                    <div style="color:var(--text-muted); margin-bottom:2px;">Executada em</div>
+                    <div>{{ proposta.data_execucao|date:"d/m/Y H:i" }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- A&ccedil;&otilde;es -->
+        {% if proposta.status == 'pendente' %}
+        <div class="card" style="padding:20px;">
+            <div class="card-title">A&ccedil;&otilde;es</div>
+            <form method="post" action="{% url 'gestao_proposta_aprovar' proposta.id %}" style="margin-bottom:12px;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success" style="width:100%; padding:10px;">
+                    <i class="fas fa-check" style="margin-right:6px;"></i>Aprovar e Executar
+                </button>
+            </form>
+
+            <form method="post" action="{% url 'gestao_proposta_rejeitar' proposta.id %}">
+                {% csrf_token %}
+                <textarea name="motivo" placeholder="Motivo da rejei&ccedil;&atilde;o (opcional)" rows="2" style="width:100%; padding:10px; border:1px solid var(--border-light); border-radius:8px; font-size:13px; margin-bottom:8px; resize:vertical; box-sizing:border-box;"></textarea>
+                <button type="submit" class="btn btn-danger" style="width:100%; padding:10px;">
+                    <i class="fas fa-times" style="margin-right:6px;"></i>Rejeitar
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

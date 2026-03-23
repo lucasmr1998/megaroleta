@@ -1,16 +1,19 @@
 # Documentacao — Modulo de Gestao
 
-> Documentacao tecnica e funcional do modulo de gestao de projetos e sala de agentes IA.
+> Centro de comando do CEO. Gestao de projetos, documentos, agentes IA e ferramentas.
 
 ---
 
 ## 1. Visao Geral
 
-O modulo de gestao e o centro de comando do CEO. Ele consolida:
+O modulo de gestao centraliza:
 - **Dashboard executivo** com metricas do sistema em tempo real
-- **Gestao de projetos** com Kanban visual
-- **Sala de agentes IA** com chat individual e reunioes
-- **Entregas e sessoes** dos agentes renderizadas como documentos
+- **Gestao de projetos** completa (objetivo, stakeholders, riscos, Kanban)
+- **Documentos unificados** (estrategia, regras, entregas, sessoes, contexto)
+- **Agentes IA** configuraveis pelo painel (prompt, modelo, ativar/desativar)
+- **Tools** dos agentes gerenciaveis (executaveis + conhecimento)
+- **Sala de agentes** com chat persistente, slash commands e invocacao de agentes
+- **Reunioes** com moderador deterministico
 
 Acessivel via `/roleta/dashboard/gestao/` — requer login de staff Django.
 
@@ -22,24 +25,29 @@ Acessivel via `/roleta/dashboard/gestao/` — requer login de staff Django.
 
 ```
 gestao/
-├── models.py              # Projeto, Etapa, Tarefa, Nota, Reuniao, MensagemReuniao
-├── views.py               # Dashboard CEO, Kanban, Sala, Entregas, Sessoes
-├── ai_service.py          # Integracao OpenAI, carregamento de contexto, moderador
-├── agent_actions.py       # Acoes dos agentes (salvar entrega, criar tarefa, etc.)
-├── urls.py                # Rotas do modulo
-├── admin.py               # Django Admin
+├── models.py              # Projeto, Etapa, Tarefa, Nota, Documento, Agente,
+│                          # ToolAgente, MensagemChat, LogTool, Reuniao, MensagemReuniao
+├── views.py               # Dashboard, Kanban, Documentos, Agentes, Tools, Sala, APIs
+├── ai_service.py          # Integracao OpenAI, contexto dinamico, moderador
+├── agent_actions.py       # Acoes executaveis dos agentes (salvar doc, criar tarefa, etc.)
+├── urls.py                # ~30 rotas
 └── templates/gestao/dashboard/
     ├── ceo.html                # Dashboard CEO
     ├── projetos.html           # Lista de projetos
+    ├── projeto_editar.html     # Editor de projeto (4 abas)
     ├── kanban.html             # Kanban board
+    ├── tarefa_editar.html      # Editor de tarefa individual
+    ├── documentos.html         # Gestor de documentos (filtro, busca, tabela)
+    ├── documento.html          # Visualizar markdown renderizado
+    ├── documento_editar.html   # Editor markdown com preview
+    ├── agentes.html            # Lista de agentes IA
+    ├── agente_editar.html      # Editor de agente (dados + prompt)
+    ├── tools.html              # Lista de tools + logs de execucao
+    ├── tool_editar.html        # Editor de tool
     ├── sala.html               # Lobby da sala de agentes
     ├── sala_chat.html          # Chat individual com agente
     ├── sala_reuniao.html       # Reuniao com agentes
-    ├── sala_reuniao_criar.html # Criar nova reuniao
-    ├── entregas.html           # Lista de entregas
-    ├── sessoes.html            # Lista de sessoes
-    ├── documento.html          # Visualizar markdown renderizado
-    └── entrega_editar.html     # Editor markdown com preview
+    └── sala_reuniao_criar.html # Criar nova reuniao
 ```
 
 ---
@@ -47,18 +55,28 @@ gestao/
 ## 3. Models
 
 ### Projeto
-Projeto de alto nivel (ex: Lancamento Floriano).
+Projeto completo com contexto estrategico para agentes IA.
 
 | Campo | Tipo | Descricao |
 |-------|------|-----------|
 | nome | CharField(200) | Nome do projeto |
-| descricao | TextField | Descricao opcional |
-| responsavel | CharField(100) | Nome ou papel (ex: CEO) |
-| data_inicio | DateField | Data de inicio |
+| descricao | TextField | Descricao geral |
+| status | CharField | `planejamento`, `em_andamento`, `pausado`, `concluido`, `cancelado` |
+| prioridade | CharField | `critica`, `alta`, `media`, `baixa` |
+| objetivo | TextField | O que deve alcancar, qual problema resolve |
+| publico_alvo | TextField | Para quem (ex: membros Floriano) |
+| criterios_sucesso | TextField | KPIs e metas concretas |
+| riscos | TextField | O que pode dar errado, dependencias |
+| premissas | TextField | Premissas assumidas |
+| responsavel | CharField(100) | Dono do projeto |
+| stakeholders | TextField | Envolvidos e papeis (1 por linha: Nome - Papel) |
+| contexto_agentes | TextField | Info extra para os agentes IA |
+| orcamento | TextField | Budget e custos previstos |
+| data_inicio | DateField | Inicio |
 | data_fim_prevista | DateField | Previsao de conclusao |
-| ativo | BooleanField | Se o projeto esta ativo |
+| ativo | BooleanField | Ativo/arquivado |
 
-**Property:** `progresso` — calcula % de tarefas concluidas.
+**Property:** `progresso` — % de tarefas concluidas.
 
 ### Etapa
 Fase dentro de um projeto (ex: Semana 1, Semana 2).
@@ -68,8 +86,6 @@ Fase dentro de um projeto (ex: Semana 1, Semana 2).
 | projeto | FK Projeto | Projeto pai |
 | nome | CharField(200) | Nome da etapa |
 | ordem | IntegerField | Ordem de exibicao |
-| data_inicio | DateField | Inicio da etapa |
-| data_fim | DateField | Fim da etapa |
 
 ### Tarefa
 Acao especifica dentro de um projeto.
@@ -80,12 +96,11 @@ Acao especifica dentro de um projeto.
 | etapa | FK Etapa (nullable) | Etapa associada |
 | titulo | CharField(300) | Descricao da tarefa |
 | descricao | TextField | Detalhes opcionais |
-| responsavel | CharField(100) | Quem faz (ex: CEO, Comercial B2B) |
+| responsavel | CharField(100) | Quem faz (ex: CEO, B2B) |
 | status | CharField | `pendente`, `em_andamento`, `concluida`, `bloqueada` |
 | prioridade | CharField | `critica`, `alta`, `media`, `baixa` |
 | data_limite | DateField | Prazo |
 | data_conclusao | DateTimeField | Quando foi concluida |
-| ordem | IntegerField | Ordem de exibicao |
 
 ### Nota
 Comentario em uma tarefa.
@@ -96,309 +111,271 @@ Comentario em uma tarefa.
 | autor | CharField(100) | Quem escreveu |
 | texto | TextField | Conteudo |
 
-### Reuniao
-Reuniao com agentes de IA.
+### Documento
+Modelo unificado para todos os documentos da empresa.
 
 | Campo | Tipo | Descricao |
 |-------|------|-----------|
-| nome | CharField(200) | Nome da reuniao (ex: Review Semanal) |
-| descricao | TextField | Objetivo da reuniao |
-| agentes | CharField(200) | IDs dos agentes separados por virgula |
-| ativa | BooleanField | Se a reuniao esta ativa |
+| titulo | CharField(300) | Titulo do documento |
+| slug | SlugField(100) | ID unico |
+| categoria | CharField | `estrategia`, `regras`, `roadmap`, `decisoes`, `entrega`, `sessao`, `contexto`, `outro` |
+| agente | FK Agente (nullable) | Agente autor (para entregas/sessoes) |
+| conteudo | TextField | Conteudo em markdown |
+| resumo | TextField | Resumo curto |
+| descricao | CharField(300) | Descricao curta |
+| visivel_agentes | BooleanField | Se agentes IA recebem este doc como contexto |
+| ordem | IntegerField | Ordem de exibicao |
 
-**Properties:** `agentes_lista` (lista de IDs), `total_mensagens` (count).
+**Categorias:**
+- `estrategia` — Visao, modelo de negocio, diferenciais
+- `regras` — Regras que nunca devem ser quebradas
+- `roadmap` — Entregas realizadas, proximos passos
+- `decisoes` — Registro de decisoes arquiteturais
+- `entrega` — Documentos produzidos pelos agentes (planejamentos, specs)
+- `sessao` — Resumos/transcricoes de conversas com agentes
+- `contexto` — Base de conhecimento (metas, financeiro, concorrentes)
+- `outro` — Qualquer outro
 
-### MensagemReuniao
-Mensagem dentro de uma reuniao.
+### Agente
+Agente de IA configuravel pelo painel.
 
 | Campo | Tipo | Descricao |
 |-------|------|-----------|
-| reuniao | FK Reuniao | Reuniao associada |
-| tipo | CharField | `ceo`, `agente`, `moderador` |
-| agente_id | CharField(20) | ID do agente (se tipo=agente) |
-| agente_nome | CharField(100) | Nome do agente |
-| conteudo | TextField | Conteudo da mensagem (markdown) |
+| slug | SlugField(20) | ID unico (ex: cto, cmo, b2b) |
+| nome | CharField(100) | Nome de exibicao |
+| descricao | CharField(200) | Descricao curta |
+| icone | CharField(50) | Classe FontAwesome |
+| cor | CharField(10) | Cor hex |
+| time | CharField | `executivo`, `comercial`, `tools` |
+| prompt | TextField | System prompt completo (markdown) |
+| modelo | CharField(50) | Modelo OpenAI (ex: gpt-4o-mini) |
+| ativo | BooleanField | Ativo/inativo |
+| ordem | IntegerField | Ordem de exibicao |
+
+### ToolAgente
+Ferramenta disponivel para os agentes.
+
+| Campo | Tipo | Descricao |
+|-------|------|-----------|
+| slug | SlugField(50) | ID unico (ex: salvar_documento, calculadora_roi) |
+| nome | CharField(100) | Nome de exibicao |
+| descricao | CharField(300) | O que a tool faz |
+| tipo | CharField | `executavel` ou `conhecimento` |
+| prompt | TextField | Instrucoes/prompt da tool |
+| exemplo | TextField | Exemplo de uso |
+| ativo | BooleanField | Ativa/inativa |
+
+**Tipos:**
+- `executavel` — Executa acoes no sistema (salvar documento, criar tarefa, etc.)
+- `conhecimento` — Prompt que ensina o agente a fazer algo (analise de dados, copy, ROI, etc.)
+
+### MensagemChat
+Mensagem persistente no chat 1:1 com agente.
+
+| Campo | Tipo | Descricao |
+|-------|------|-----------|
+| agente | FK Agente | Agente da conversa |
+| role | CharField | `user` ou `assistant` |
+| conteudo | TextField | Texto da mensagem |
+
+### LogTool
+Log de execucao de tools pelos agentes.
+
+| Campo | Tipo | Descricao |
+|-------|------|-----------|
+| tool | FK ToolAgente (nullable) | Tool executada |
+| tool_slug | CharField(50) | Slug no momento da execucao |
+| agente | FK Agente (nullable) | Agente que executou |
+| resultado | TextField | Resultado da execucao |
+| sucesso | BooleanField | Se executou com sucesso |
+
+### Reuniao / MensagemReuniao
+Reuniao com multiplos agentes. Mensagens salvas no banco com tipo (ceo/agente/moderador).
 
 ---
 
 ## 4. Rotas
 
+### Dashboard e Projetos
 | Rota | View | Descricao |
 |------|------|-----------|
-| `/dashboard/gestao/` | `dashboard_ceo` | Dashboard CEO com KPIs |
+| `/dashboard/gestao/` | `dashboard_ceo` | Dashboard com KPIs |
 | `/dashboard/gestao/projetos/` | `gestao_projetos` | Lista e criacao de projetos |
-| `/dashboard/gestao/kanban/<id>/` | `kanban` | Kanban board de um projeto |
-| `/dashboard/gestao/sessoes/` | `gestao_sessoes` | Lista de sessoes com agentes |
-| `/dashboard/gestao/sessoes/<arquivo>/` | `gestao_sessao_detalhe` | Visualizar sessao |
-| `/dashboard/gestao/entregas/` | `gestao_entregas` | Lista de entregas dos agentes |
-| `/dashboard/gestao/entregas/<agente>/<arquivo>/` | `gestao_entrega_detalhe` | Visualizar entrega |
-| `/dashboard/gestao/entregas/<agente>/<arquivo>/editar/` | `gestao_entrega_editar` | Editor markdown |
-| `/dashboard/gestao/sala/` | `sala_agentes` | Lobby da sala de agentes |
-| `/dashboard/gestao/sala/reuniao/criar/` | `sala_reuniao_criar` | Criar nova reuniao |
-| `/dashboard/gestao/sala/reuniao/<id>/` | `sala_reuniao` | Reuniao com agentes |
-| `/dashboard/gestao/sala/api/chat/` | `api_chat` | API AJAX para chat |
-| `/dashboard/gestao/sala/api/salvar-sessao/` | `api_salvar_sessao` | Salvar sessao do chat |
+| `/dashboard/gestao/projetos/<id>/editar/` | `gestao_projeto_editar` | Editor completo (4 abas) |
+| `/dashboard/gestao/projetos/<id>/toggle/` | `gestao_projeto_toggle` | Ativar/arquivar |
+| `/dashboard/gestao/projetos/<id>/excluir/` | `gestao_projeto_excluir` | Excluir |
+| `/dashboard/gestao/kanban/<id>/` | `kanban` | Kanban board |
+| `/dashboard/gestao/kanban/<id>/tarefa/<id>/editar/` | `gestao_tarefa_editar` | Editor de tarefa |
+
+### Documentos
+| Rota | View | Descricao |
+|------|------|-----------|
+| `/dashboard/gestao/documentos/` | `gestao_documentos` | Gestor com filtro/busca |
+| `/dashboard/gestao/documentos/criar/` | `gestao_documento_criar` | Criar documento |
+| `/dashboard/gestao/documentos/<id>/` | `gestao_documento_detalhe` | Visualizar |
+| `/dashboard/gestao/documentos/<id>/editar/` | `gestao_documento_editar` | Editor markdown |
+| `/dashboard/gestao/documentos/<id>/excluir/` | `gestao_documento_excluir` | Excluir |
+
+### Agentes e Tools
+| Rota | View | Descricao |
+|------|------|-----------|
+| `/dashboard/gestao/agentes/` | `gestao_agentes` | Lista de agentes |
+| `/dashboard/gestao/agentes/criar/` | `gestao_agente_criar` | Criar agente |
+| `/dashboard/gestao/agentes/<id>/editar/` | `gestao_agente_editar` | Editor (dados + prompt) |
+| `/dashboard/gestao/agentes/<id>/toggle/` | `gestao_agente_toggle` | Ativar/desativar |
+| `/dashboard/gestao/tools/` | `gestao_tools` | Lista + logs de execucao |
+| `/dashboard/gestao/tools/criar/` | `gestao_tool_criar` | Criar tool |
+| `/dashboard/gestao/tools/<id>/editar/` | `gestao_tool_editar` | Editor |
+| `/dashboard/gestao/tools/<id>/toggle/` | `gestao_tool_toggle` | Ativar/desativar |
+| `/dashboard/gestao/tools/<id>/excluir/` | `gestao_tool_excluir` | Excluir |
+
+### Sala de Agentes
+| Rota | View | Descricao |
+|------|------|-----------|
+| `/dashboard/gestao/sala/` | `sala_agentes` | Lobby |
 | `/dashboard/gestao/sala/<agente_id>/` | `sala_chat` | Chat individual |
+| `/dashboard/gestao/sala/reuniao/criar/` | `sala_reuniao_criar` | Criar reuniao |
+| `/dashboard/gestao/sala/reuniao/<id>/` | `sala_reuniao` | Reuniao |
+| `/dashboard/gestao/sala/api/chat/` | `api_chat` | API AJAX para chat |
+| `/dashboard/gestao/sala/api/comando/` | `api_slash_command` | API para slash commands |
+| `/dashboard/gestao/sala/api/salvar-sessao/` | `api_salvar_sessao` | Salvar sessao como documento |
+
+> Todos os endpoints da API usam CSRF padrao do Django (sem @csrf_exempt). Templates enviam X-CSRFToken.
 
 ---
 
-## 5. Dashboard CEO
+## 5. Sidebar
 
-### Metricas do Sistema (tempo real)
-Dados lidos diretamente do banco:
-- Membros (total + validados)
-- Giros realizados
-- Parceiros ativos + cupons ativos
-- Resgates (total + utilizados)
-- Indicacoes (total + convertidas)
-
-### Metricas de Tarefas
-- Total, pendentes, em andamento, concluidas, bloqueadas
-- Projetos ativos com barra de progresso
-- Carga por responsavel (quem tem mais tarefas)
-- Tarefas urgentes (criticas + altas)
-- Proximos prazos
+```
+GESTAO
+├── Dashboard
+├── Projetos
+├── Sala de Agentes
+├── Documentos
+├── Agentes IA
+└── Tools
+```
 
 ---
 
-## 6. Kanban
+## 6. Sala de Agentes
 
-Board visual com 4 colunas:
+### Chat Individual
+- Historico **persistente no banco** (model `MensagemChat`)
+- Markdown renderizado via `marked.js` + sanitizado com `DOMPurify`
+- Agente convidado: `/agentes ceo` traz outro agente para responder no chat
+- Consulta entre agentes inclui contexto da conversa atual
+- Agente consultado recebe instrucao de ser direto e assertivo (nao perguntar de volta)
 
-| Coluna | Cor | Acoes |
-|--------|-----|-------|
-| Pendente | Cinza | Botao "Iniciar →" |
-| Em Andamento | Azul | Botao "← Voltar" + "Concluir ✓" |
-| Concluida | Verde | Texto riscado |
-| Bloqueada | Vermelho | Botao "Desbloquear" |
+### Slash Commands
+Comandos digitados no chat com `/`:
 
-### Funcionalidades
-- Cards com borda colorida por prioridade (vermelha = critica, amarela = alta)
-- Responsavel e prazo visiveis no card
-- Modal para criar nova tarefa (titulo, descricao, responsavel, prioridade, etapa, prazo)
-- Barra de progresso do projeto no topo
+| Comando | Descricao |
+|---------|-----------|
+| `/help` | Lista de comandos |
+| `/tools` | Ferramentas dos agentes |
+| `/tarefas` | Tarefas ativas dos projetos |
+| `/docs` | Documentos recentes |
+| `/projetos` | Projetos ativos com progresso |
+| `/agentes` | Agentes IA ativos |
+| `/limpar` | Limpa historico do chat |
+
+**Comportamento interativo:**
+- Ao digitar `/` aparece popup de autocomplete
+- Ao selecionar um comando com argumentos (ex: `/projetos`) mostra opcoes do banco
+- Filtra conforme digita (ex: `/projetos flo` → Lancamento Floriano)
+- Navegacao: setas cima/baixo, Tab/Enter para selecionar, Esc para fechar
+- `/agentes <slug>` invoca o agente no chat (responde a proxima mensagem)
+- `/projetos <nome>` mostra detalhes com tarefas
+
+### Reunioes
+- Moderador **deterministico** (sem IA, sem custo) — analisa palavras-chave
+- Mensagens persistem no banco (`MensagemReuniao`)
+- Cada agente recebe apenas: msgs do CEO + suas proprias respostas
+- Botoes "Ouvir tambem" para pedir opiniao de outros agentes
 
 ---
 
-## 7. Sala de Agentes IA
+## 7. Tools dos Agentes
 
-### Integracao OpenAI
-- **Modelo:** `gpt-4o-mini`
-- **API Key:** Variavel de ambiente `OPENAI_API_KEY` (arquivo `.env`)
-- **Biblioteca:** `openai` (Python SDK)
+### Executaveis (agent_actions.py)
+Processadas via regex na resposta do agente:
 
-### Contexto Carregado Automaticamente
+| Tool | Formato | Acao |
+|------|---------|------|
+| Salvar Documento | `---SALVAR_DOCUMENTO---...---FIM_DOCUMENTO---` | Cria Documento no banco |
+| Criar Tarefa | `---CRIAR_TAREFA---...---FIM_TAREFA---` | Cria Tarefa no Kanban |
+| Atualizar Tarefa | `---ATUALIZAR_TAREFA---...---FIM_TAREFA---` | Muda status |
+| Consultar Agente | `---CONSULTAR_AGENTE---...---FIM_CONSULTA---` | Chama outro agente com contexto |
+
+Retrocompatibilidade: `SALVAR_ENTREGA` e `SALVAR_SESSAO` ainda funcionam (mapeados para `SALVAR_DOCUMENTO`).
+
+### Conhecimento (prompts carregados do banco)
+| Tool | Descricao |
+|------|-----------|
+| Analise de Dados | Consulta metricas e gera insights acionaveis |
+| Gerador de Copy | Textos para WhatsApp, Instagram, impresso |
+| Calculadora ROI | ROI de acoes e features (3 cenarios) |
+| Auditor de Codigo | Checklist seguranca/performance/produto |
+| Gerador de Spec | Spec completa de feature com user stories e ICE |
+| Prospector de Parceiro | Abordagem personalizada B2B com scripts |
+
+### Logging
+Cada execucao de tool e registrada no `LogTool`:
+- Tool, agente, resultado, sucesso/erro, timestamp
+- Contadores visiveis na pagina de Tools
+- Ultimas 15 execucoes listadas com detalhes
+
+---
+
+## 8. Contexto Carregado para Agentes
+
 Cada agente recebe como system message:
-1. **Prompt do agente** (arquivo `.md` da pasta `docs/agentes/`)
-2. **Documentos estrategicos** (ESTRATEGIA.md, ROADMAP.md, REGRAS_NEGOCIO.md, DECISOES.md)
-3. **Entregas dos agentes** (todos os `.md` de `docs/entregas/`)
-4. **Sessoes recentes** (ultimas 5 de `docs/contexto/sessoes/`)
-5. **Contexto do negocio** (brandbook, metas, financeiro, concorrentes, FAQ)
-6. **Projetos e tarefas** (do banco, em tempo real)
-7. **Metricas do sistema** (membros, giros, parceiros, cupons, indicacoes, por cidade)
-8. **Instrucoes adicionais** (modo conversa, identidade, acoes disponiveis)
 
-### Agentes Disponiveis
-
-| ID | Nome | Time | Arquivo |
-|----|------|------|---------|
-| cto | CTO | Executivo | `docs/agentes/executivo/cto.md` |
-| cpo | CPO | Executivo | `docs/agentes/executivo/cpo.md` |
-| cfo | CFO | Executivo | `docs/agentes/executivo/cfo.md` |
-| cmo | CMO | Comercial | `docs/agentes/comercial/cmo.md` |
-| pmm | PMM | Comercial | `docs/agentes/comercial/pmm.md` |
-| b2b | Comercial B2B | Comercial | `docs/agentes/comercial/comercial_b2b.md` |
-| cs | Customer Success | Comercial | `docs/agentes/comercial/customer_success.md` |
+1. **Prompt do agente** (do banco, model `Agente.prompt`)
+2. **Documentos visiveis** (`Documento.visivel_agentes=True`) — estrategia, regras, contexto
+3. **Projetos completos** — objetivo, stakeholders, riscos, criterios, tarefas ativas
+   - **Limitado a 20 projetos** mais recentes, 30 tarefas/projeto, textos truncados a 2000 chars
+4. **Metricas do sistema** — membros, giros, parceiros, cupons, indicacoes, cidades
+5. **Entregas dos agentes** (Documentos categoria `entrega`)
+6. **Tools ativas** — executaveis (formato e instrucoes) + conhecimento (prompts)
+7. **Instrucoes de comunicacao** — modo conversa, identidade, assertividade
+8. **Agentes disponiveis** para consulta
 
 ---
 
-## 8. Chat Individual
-
-### Fluxo
-1. CEO escolhe agente no lobby
-2. Digita mensagem → envia via AJAX para `/api/chat/` (modo `chat`)
-3. Servidor carrega prompt + contexto completo + historico da sessao
-4. Chama OpenAI API
-5. Processa acoes embutidas na resposta
-6. Salva no historico da sessao Django (ultimas 20 mensagens)
-7. Retorna resposta renderizada em markdown (via `marked.js`)
-
-### Funcionalidades
-- Historico mantido na sessao (persiste entre mensagens)
-- Botao "Salvar Sessao" gera arquivo `.md` em `docs/contexto/sessoes/`
-- Botao "Limpar Chat" reseta historico
-- Markdown renderizado (tabelas, codigo, headings, listas)
-- Animacao "pensando..." enquanto aguarda
-
----
-
-## 9. Reunioes
-
-### Criar Reuniao
-- Nome (obrigatorio)
-- Descricao (opcional)
-- Participantes (checkboxes dos 7 agentes)
-
-### Moderador Deterministico
-O moderador NAO usa IA — e logica Python pura que analisa palavras-chave:
-
-```
-"CMO como esta?" → ['cmo']
-"Comercial, update" → ['b2b']
-"go-to-market" → ['pmm']
-"como estamos?" → ['cpo']
-"todos, review" → ['cpo', 'cmo', 'b2b'] (max 3)
-```
-
-Regras de priorizacao:
-1. Mencao direta pelo nome → so esse agente
-2. Palavra-chave do tema → agente dono do tema
-3. "todos" / "cada um" → maximo 3
-4. Fallback → CPO
-
-### Fluxo da Reuniao
-1. CEO digita mensagem
-2. Moderador deterministico decide qual agente responde
-3. Mensagem do CEO salva no banco (`MensagemReuniao tipo=ceo`)
-4. Agente selecionado recebe a mensagem + historico (so msgs do CEO + suas proprias respostas)
-5. Agente responde → resposta salva no banco (`MensagemReuniao tipo=agente`)
-6. Botoes "Ouvir tambem: [CTO] [PMM] ..." aparecem
-7. CEO pode clicar num botao para pedir a outro agente → gera nova mensagem do CEO + resposta
-
-### Historico Persistente
-- Todas as mensagens salvas no banco (modelo `MensagemReuniao`)
-- Ao recarregar a pagina, historico completo e carregado
-- Markdown renderizado via `marked.js` no carregamento
-
-### Isolamento de Contexto
-Cada agente recebe no historico SOMENTE:
-- Mensagens do CEO
-- Suas proprias respostas anteriores
-
-NAO ve respostas de outros agentes. Isso evita roleplay (agente falando como se fosse outro).
-
----
-
-## 10. Acoes dos Agentes
-
-Os agentes podem executar acoes no sistema incluindo blocos especiais na resposta:
-
-### Salvar Entrega
-```
----SALVAR_ENTREGA---
-agente: pmm
-arquivo: nome.md
-conteudo: (markdown)
----FIM_ENTREGA---
-```
-Salva em `docs/entregas/[agente]/[arquivo]`.
-
-### Salvar Sessao
-```
----SALVAR_SESSAO---
-arquivo: 2026-03-19_agente_topico.md
-conteudo: (markdown)
----FIM_SESSAO---
-```
-Salva em `docs/contexto/sessoes/`.
-
-### Criar Tarefa
-```
----CRIAR_TAREFA---
-projeto: Lancamento Floriano
-titulo: Fazer X
-responsavel: CEO
-prioridade: alta
----FIM_TAREFA---
-```
-Cria tarefa no projeto ativo mais relevante.
-
-### Atualizar Tarefa
-```
----ATUALIZAR_TAREFA---
-titulo: Texto parcial do titulo
-status: concluida
----FIM_TAREFA---
-```
-
-### Consultar Outro Agente
-```
----CONSULTAR_AGENTE---
-agente: cto
-pergunta: Isso e viavel tecnicamente?
----FIM_CONSULTA---
-```
-Chama outro agente e inclui a resposta na mensagem.
-
-### Processamento
-O `agent_actions.py` processa os blocos na resposta:
-1. Detecta blocos via regex
-2. Executa a acao (salvar arquivo, criar no banco, etc.)
-3. Substitui o bloco por confirmacao: `> ✅ Entrega salva: entregas/pmm/...`
-
----
-
-## 11. Entregas e Sessoes
-
-### Entregas (`docs/entregas/`)
-- Documentos de trabalho produzidos pelos agentes
-- Organizados por agente: `docs/entregas/pmm/`, `docs/entregas/cmo/`, etc.
-- Visualizacao com markdown renderizado
-- Editor com preview em tempo real (lado a lado)
-- Botao "Editar" na pagina de visualizacao
-
-### Sessoes (`docs/contexto/sessoes/`)
-- Transcricoes de conversas com agentes
-- Nomeadas por data + agente + topico
-- Botao "Salvar Sessao" no chat individual gera automaticamente
-- Visualizacao com markdown renderizado
-
----
-
-## 12. Regras de Comunicacao dos Agentes
+## 9. Regras de Comunicacao
 
 ### Modo Conversa
-- Perguntas casuais ("como esta?") → resposta curta (3-8 frases), SEM template
-- Perguntas rapidas ("quantos parceiros?") → 1-3 frases diretas
-- Pedido de acao ("crie tarefa") → executa e confirma em 1 frase
+- Perguntas casuais → resposta curta (3-8 frases), SEM template
+- Perguntas rapidas → 1-3 frases diretas
+- Pedido de acao → executa e confirma em 1 frase
 - Readout completo → SOMENTE quando CEO pede explicitamente
 
 ### Identidade
 - Agente fala SOMENTE sobre sua area
 - NUNCA fala pelos outros agentes
-- NUNCA inclui secoes como "### CTO:", "### CMO:" na resposta
 - Se perguntam algo fora da area: "isso e com o [agente X]"
 
----
-
-## 13. Integracao no Admin
-
-### Topbar
-Modulo "Gestao" na topbar do dashboard admin.
-
-### Sidebar
-```
-GESTAO
-├── Dashboard CEO
-├── Projetos (Kanban)
-├── Sala de Agentes
-├── Entregas
-└── Sessoes
-```
+### Consulta entre Agentes
+- Agente consultado recebe as ultimas 10 mensagens da conversa como contexto
+- Instrucao explicita de NAO perguntar de volta — ser direto e assertivo
+- Se faltar info, assumir cenario mais provavel
 
 ---
 
-## 14. Dependencias
+## 10. Dependencias
 
-| Pacote | Versao | Uso |
-|--------|--------|-----|
-| openai | latest | API do GPT-4o-mini |
-| python-dotenv | latest | Carregar .env |
-| markdown | latest | Renderizar .md no servidor (entregas/sessoes) |
-| marked.js | CDN | Renderizar markdown no browser (chat) |
+| Pacote | Uso |
+|--------|-----|
+| openai | API OpenAI (modelo configuravel por agente) |
+| python-dotenv | Carregar .env |
+| markdown | Renderizar markdown no servidor |
+| marked.js (CDN) | Renderizar markdown no browser |
+| bleach | Sanitizar HTML de markdown contra XSS |
+| DOMPurify (CDN) | Sanitizar HTML no browser contra XSS |
 
 ### Variavel de Ambiente
 ```
 OPENAI_API_KEY=sk-proj-...
 ```
-Arquivo `.env` na raiz do projeto (no `.gitignore`).

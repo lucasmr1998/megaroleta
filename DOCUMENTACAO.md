@@ -23,6 +23,7 @@
 15. [Configuracoes Gerais](#15-configuracoes-gerais)
 16. [Integracoes Externas](#16-integracoes-externas)
 17. [Deploy e Infraestrutura](#17-deploy-e-infraestrutura)
+18. [Seguranca e Hardening](#18-seguranca-e-hardening)
 
 ---
 
@@ -44,13 +45,15 @@ O sistema e uma plataforma de fidelidade gamificada. Clientes da Megalink acumul
 
 ## 2. Arquitetura de Apps Django
 
-O projeto esta separado em **3 apps Django** independentes:
+O projeto esta separado em **5 apps Django** independentes:
 
 ```
 megaroleta/
 ├── roleta/           # App principal: roleta, membros, premios, gamificacao
 ├── parceiros/        # Gestao de parceiros, cupons e resgates
 ├── indicacoes/       # Sistema de indicacoes e embaixadores
+├── carteirinha/      # Carteirinhas virtuais, modelos, regras de atribuicao
+├── gestao/           # Gestao de projetos, Kanban, documentos, agentes IA, tools, sala de agentes
 └── sorteio/          # Projeto Django (settings, urls raiz)
 ```
 
@@ -142,7 +145,7 @@ Apos login, o membro acessa `/roleta/membro/` — um hub com cards:
 - **Retorna:** Nome, e-mail, telefone (mascarado), endereco, ID cliente
 
 ### PostgreSQL Hubsoft (somente leitura)
-- **Host:** `177.10.118.77:9432` | Banco: `hubsoft` | Usuario: `mega_leitura`
+- Credenciais configuradas via variaveis de ambiente no `.env` (`HUBSOFT_DB_*`). Cache de 1 hora via Django cache framework.
 - Consulta cidade de instalacao
 - Verifica recorrencia, pagamento adiantado e uso do app
 - Consulta quantidade de clientes por cidade (para relatorios)
@@ -343,6 +346,11 @@ Acessivel via `/roleta/dashboard/` — requer login de staff Django.
 - **Etapa** — projeto FK, nome, ordem, datas
 - **Tarefa** — projeto FK, etapa FK, titulo, responsavel, status (pendente/em_andamento/concluida/bloqueada), prioridade (critica/alta/media/baixa), data_limite
 - **Nota** — tarefa FK, autor, texto
+- **Documento** — projeto FK, categoria (estrategia/regras/roadmap/entregas/sessoes/contexto), titulo, conteudo markdown, agente FK, resumo
+- **Agente** — nome, papel, prompt, modelo (gpt-4o-mini), icone, cor, descricao, ativo
+- **ToolAgente** — agente FK, nome, tipo (executavel/conhecimento), descricao, funcao, parametros JSON
+- **MensagemChat** — agente FK, papel (user/assistant), conteudo, data
+- **LogTool** — tool FK, agente FK, input, output, sucesso, data
 - **Reuniao** — nome, descricao, agentes (comma-separated IDs), ativa
 - **MensagemReuniao** — reuniao FK, tipo (ceo/agente/moderador), agente_id, agente_nome, conteudo
 
@@ -376,7 +384,7 @@ Acessivel via `/roleta/dashboard/` — requer login de staff Django.
 ### Producao
 - **Servidor:** Gunicorn + Nginx
 - **Dominio:** `roleta.megalinkpiaui.com.br`
-- **Banco:** PostgreSQL (`187.62.153.52:5432`, banco `megasorteio`)
+- **Banco:** PostgreSQL (credenciais via `.env`)
 - **Timezone:** America/Fortaleza
 
 ### Comandos uteis
@@ -433,9 +441,9 @@ megaroleta/
 │       ├── dashboard/             # Admin: home, modelos, criar, editar, regras, preview
 │       └── partials/cartao.html   # Template reutilizavel do cartao
 ├── gestao/
-│   ├── models.py                  # Projeto, Etapa, Tarefa, Nota, Reuniao, MensagemReuniao
-│   ├── views.py                   # Dashboard CEO, kanban, sala agentes, entregas, sessoes
-│   ├── ai_service.py              # Integracao OpenAI, prompts, moderador
+│   ├── models.py                  # Projeto, Etapa, Tarefa, Nota, Documento, Agente, ToolAgente, MensagemChat, LogTool, Reuniao, MensagemReuniao
+│   ├── views.py                   # Dashboard, projetos, Kanban, documentos, agentes IA, tools, sala de agentes
+│   ├── ai_service.py              # Integracao OpenAI, prompts, moderador, slash commands, tools
 │   ├── agent_actions.py           # Acoes: salvar entrega/sessao, criar/atualizar tarefa, consultar agente
 │   └── templates/gestao/dashboard/
 │       ├── ceo.html               # Dashboard CEO com KPIs
@@ -460,3 +468,38 @@ megaroleta/
     ├── settings.py                # Configuracoes Django (dotenv)
     └── urls.py                    # URLs raiz
 ```
+
+---
+
+## 18. Seguranca e Hardening
+
+### Credenciais
+- Todas as credenciais migradas para `.env` (DB principal, Hubsoft, OpenAI, SECRET_KEY)
+- `DEBUG` e `ALLOWED_HOSTS` controlados via `.env`
+- Conexao Hubsoft via helper `_get_hubsoft_connection()` centralizado
+
+### Race Conditions
+- `GamificationService.atribuir_pontos()` usa `select_for_update()` + `F()`
+- `CupomService.resgatar_cupom()` usa `select_for_update()` + `F()`
+- `validar_cupom` e `painel_validar` usam `select_for_update()` dentro de `transaction.atomic`
+- CRUD de parceiros, cupons e carteirinhas protegidos com `@transaction.atomic`
+
+### Performance
+- Queries N+1 eliminadas em `roleta_init_dados`, `membro_missoes`, `membro_indicar`, `membro_perfil`
+- 17 `db_index=True` adicionados em campos filtrados frequentemente
+- Cache Django para dados Hubsoft (1 hora)
+- Contexto IA limitado (20 projetos, 30 tarefas/projeto, textos truncados)
+- `connect_timeout=10` na conexao Hubsoft
+
+### Sanitizacao
+- Backend: `bleach.clean()` no markdown antes de `|safe`
+- Frontend: `DOMPurify.sanitize()` em todo `marked.parse()` + `innerHTML`
+
+### Logging
+- `print()` substituido por `logging.getLogger(__name__)` em todo o projeto
+- Loggers configurados para `roleta`, `parceiros`, `gestao`
+- Logs debug com dados sensiveis (CPF, telefone) removidos
+
+### CSRF
+- `@csrf_exempt` removido de todos os endpoints
+- Templates enviam `X-CSRFToken` nos headers AJAX

@@ -1,0 +1,131 @@
+{% extends 'roleta/dashboard/base.html' %}
+
+{% block title %}Categorias{% endblock %}
+
+{% block content %}
+<!-- Modal Criar/Editar -->
+<div id="modal-cat" class="modal-overlay">
+    <div class="modal-content" style="max-width:450px;">
+        <button onclick="document.getElementById('modal-cat').style.display='none'" class="modal-close">&times;</button>
+        <h3 id="modal-titulo" style="margin-bottom:20px;"><i class="fas fa-tag" style="color:var(--primary); margin-right:8px;"></i>Nova Categoria</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" id="form-action" value="criar">
+            <input type="hidden" name="categoria_id" id="form-cat-id" value="">
+            <div class="form-group">
+                <label class="form-label">Nome *</label>
+                <input type="text" name="nome" id="form-nome" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Slug *</label>
+                <input type="text" name="slug" id="form-slug" class="form-control" required pattern="[a-z0-9-]+" title="Apenas letras, numeros e hifen">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">&Iacute;cone (FontAwesome)</label>
+                    <input type="text" name="icone" id="form-icone" class="form-control" value="fas fa-tag">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ordem</label>
+                    <input type="number" name="ordem" id="form-ordem" class="form-control" value="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="ativo" id="form-ativo" checked style="width:18px; height:18px;">
+                    <span style="font-size:14px; font-weight:600;">Ativa</span>
+                </label>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-cat').style.display='none'">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1 class="page-title">Categorias de Parceiros</h1>
+        <p class="page-subtitle">Organize seus parceiros por categoria</p>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModal()"><i class="fas fa-plus"></i> Nova Categoria</button>
+</div>
+
+<div class="card" style="overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr style="background:var(--bg-secondary); font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                <th style="padding:12px 16px; text-align:left;">Categoria</th>
+                <th style="padding:12px 16px; text-align:left;">&Iacute;cone</th>
+                <th style="padding:12px 16px; text-align:left;">Slug</th>
+                <th style="padding:12px 16px; text-align:center;">Ordem</th>
+                <th style="padding:12px 16px; text-align:center;">Status</th>
+                <th style="padding:12px 16px; text-align:center;">Parceiros</th>
+                <th style="padding:12px 16px; text-align:right;">A&ccedil;&otilde;es</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cat in categorias %}
+            <tr style="border-top:1px solid var(--border);">
+                <td style="padding:12px 16px; font-weight:600;">{{ cat.nome }}</td>
+                <td style="padding:12px 16px;"><i class="{{ cat.icone }}" style="font-size:18px; color:var(--primary);"></i> <span style="font-size:12px; color:var(--text-muted);">{{ cat.icone }}</span></td>
+                <td style="padding:12px 16px; font-size:13px; color:var(--text-muted);">{{ cat.slug }}</td>
+                <td style="padding:12px 16px; text-align:center;">{{ cat.ordem }}</td>
+                <td style="padding:12px 16px; text-align:center;">
+                    {% if cat.ativo %}
+                        <span style="background:#ecfdf5; color:#10b981; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">Ativa</span>
+                    {% else %}
+                        <span style="background:#fef2f2; color:#ef4444; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">Inativa</span>
+                    {% endif %}
+                </td>
+                <td style="padding:12px 16px; text-align:center; font-weight:700;">{{ cat.parceiros.count }}</td>
+                <td style="padding:12px 16px; text-align:right;">
+                    <button class="btn btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="editarCat({{ cat.id }}, '{{ cat.nome|escapejs }}', '{{ cat.slug|escapejs }}', '{{ cat.icone|escapejs }}', {{ cat.ordem }}, {{ cat.ativo|yesno:'true,false' }})">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <form method="post" style="display:inline;" onsubmit="return confirm('Excluir categoria?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="excluir">
+                        <input type="hidden" name="categoria_id" value="{{ cat.id }}">
+                        <button type="submit" class="btn btn-secondary" style="font-size:12px; padding:4px 10px; color:var(--danger);">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="padding:40px; text-align:center; color:var(--text-muted);">Nenhuma categoria cadastrada</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function abrirModal() {
+    document.getElementById('modal-titulo').innerHTML = '<i class="fas fa-tag" style="color:var(--primary); margin-right:8px;"></i>Nova Categoria';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-cat-id').value = '';
+    document.getElementById('form-nome').value = '';
+    document.getElementById('form-slug').value = '';
+    document.getElementById('form-icone').value = 'fas fa-tag';
+    document.getElementById('form-ordem').value = '0';
+    document.getElementById('form-ativo').checked = true;
+    document.getElementById('modal-cat').style.display = 'flex';
+}
+
+function editarCat(id, nome, slug, icone, ordem, ativo) {
+    document.getElementById('modal-titulo').innerHTML = '<i class="fas fa-pen" style="color:var(--primary); margin-right:8px;"></i>Editar Categoria';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-cat-id').value = id;
+    document.getElementById('form-nome').value = nome;
+    document.getElementById('form-slug').value = slug;
+    document.getElementById('form-icone').value = icone;
+    document.getElementById('form-ordem').value = ordem;
+    document.getElementById('form-ativo').checked = ativo;
+    document.getElementById('modal-cat').style.display = 'flex';
+}
+</script>
+{% endblock %}

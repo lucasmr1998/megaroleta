@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('', views.roleta_index, name='roleta_index'),
+    path('clube/', views.landing_clube, name='landing_clube'),
     path('cadastrar/', views.cadastrar_participante, name='cadastrar_participante'),
     
     # Custom Admin Dashboard
@@ -17,6 +18,9 @@ urlpatterns = [
     path('dashboard/assets/', views.dashboard_assets, name='dashboard_assets'),
     path('dashboard/config/', views.dashboard_config, name='dashboard_config'),
     path('dashboard/gamificacao/', views.dashboard_gamificacao, name='dashboard_gamificacao'),
+    path('dashboard/landing/', views.dashboard_landing_config, name='dashboard_landing_config'),
+    path('dashboard/banners/', views.dashboard_banners, name='dashboard_banners'),
+    path('dashboard/categorias/', views.dashboard_categorias, name='dashboard_categorias'),
     path('dashboard/relatorios/', views.dashboard_relatorios, name='dashboard_relatorios'),
     path('dashboard/relatorios/indicacoes/', views.dashboard_relatorios_indicacoes, name='dashboard_relatorios_indicacoes'),
     path('dashboard/relatorios/parceiros/', views.dashboard_relatorios_parceiros, name='dashboard_relatorios_parceiros'),
@@ -31,6 +35,7 @@ urlpatterns = [
     path('membro/cupons/', views.membro_cupons, name='membro_cupons'),
     path('membro/indicar/', views.membro_indicar, name='membro_indicar'),
     path('membro/perfil/', views.membro_perfil, name='membro_perfil'),
+    path('membro/faq/', views.membro_faq, name='membro_faq'),
 
     path('api/init-dados/', views.roleta_init_dados, name='roleta_init_dados'),
     path('api/cupons/resgatar/', views.api_resgatar_cupom, name='api_resgatar_cupom'),

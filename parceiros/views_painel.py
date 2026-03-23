@@ -4,6 +4,7 @@ from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
@@ -108,6 +109,7 @@ def painel_home(request):
 
 
 @login_required(login_url='/parceiro/login/')
+@transaction.atomic
 def painel_cupons(request):
     """Cupons do parceiro."""
     parceiro = _get_parceiro(request)
@@ -206,22 +208,23 @@ def painel_validar(request):
 
         elif action == 'confirmar':
             try:
-                resgate = ResgateCupom.objects.select_related(
-                    'membro', 'cupom', 'cupom__parceiro'
-                ).get(codigo_unico=codigo, cupom__parceiro=parceiro)
+                with transaction.atomic():
+                    resgate = ResgateCupom.objects.select_for_update().select_related(
+                        'membro', 'cupom', 'cupom__parceiro'
+                    ).get(codigo_unico=codigo, cupom__parceiro=parceiro)
 
-                if resgate.status == 'utilizado':
-                    erro = "Este cupom já foi utilizado."
-                elif resgate.status in ('expirado', 'cancelado'):
-                    erro = f"Este cupom está {resgate.get_status_display().lower()}."
-                else:
-                    valor_compra = request.POST.get('valor_compra', '').strip()
-                    resgate.status = 'utilizado'
-                    resgate.data_utilizacao = timezone.now()
-                    if valor_compra:
-                        resgate.valor_compra = valor_compra.replace(',', '.')
-                    resgate.save(update_fields=['status', 'data_utilizacao', 'valor_compra'])
-                    sucesso = True
+                    if resgate.status == 'utilizado':
+                        erro = "Este cupom já foi utilizado."
+                    elif resgate.status in ('expirado', 'cancelado'):
+                        erro = f"Este cupom está {resgate.get_status_display().lower()}."
+                    else:
+                        valor_compra = request.POST.get('valor_compra', '').strip()
+                        resgate.status = 'utilizado'
+                        resgate.data_utilizacao = timezone.now()
+                        if valor_compra:
+                            resgate.valor_compra = valor_compra.replace(',', '.')
+                        resgate.save(update_fields=['status', 'data_utilizacao', 'valor_compra'])
+                        sucesso = True
             except ResgateCupom.DoesNotExist:
                 erro = "Código não encontrado."
 

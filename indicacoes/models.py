@@ -40,7 +40,7 @@ class Indicacao(models.Model):
     telefone_indicado = models.CharField(max_length=20)
     cpf_indicado = models.CharField(max_length=14, blank=True)
     cidade_indicado = models.CharField(max_length=100, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente', db_index=True)
     membro_indicado = models.ForeignKey(
         MembroClube, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='indicacao_recebida'

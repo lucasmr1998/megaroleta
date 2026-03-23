@@ -84,9 +84,6 @@
 
 ---
 
-## Template para Novas Decisoes
-
-```
 ## D009 — App Gestao Separado
 
 **Data:** Marco/2026
@@ -127,14 +124,60 @@
 
 ---
 
-## Template para Novas Decisoes
+## D013 — Credenciais Migradas para .env
 
-```
-## DXXX — Titulo
+**Data:** Marco/2026
+**Contexto:** Credenciais do banco principal, Hubsoft e OpenAI estavam hardcoded no settings.py e hubsoft_service.py, expostas no git.
+**Decisao:** Migrar todas as credenciais para `.env` via `python-dotenv`. Criar helper `_get_hubsoft_connection()` centralizado. DEBUG e ALLOWED_HOSTS também via `.env`.
+**Alternativas:** Manter hardcoded (inseguro), usar Django-environ (dependência extra).
+**Motivo:** Segurança básica — credenciais nunca devem estar no código-fonte. python-dotenv já era dependência do projeto.
 
-**Data:**
-**Contexto:**
-**Decisao:**
-**Alternativas:**
-**Motivo:**
-```
+---
+
+## D014 — select_for_update + F() em Operações Financeiras
+
+**Data:** Marco/2026
+**Contexto:** `atribuir_pontos()` e `validar_cupom()` tinham race conditions — requests concorrentes podiam duplicar pontos ou usar cupom duas vezes.
+**Decisao:** Implementar `select_for_update()` para lock pessimista + `F()` expressions para updates atômicos. Todas as views de escrita receberam `@transaction.atomic`.
+**Alternativas:** Usar `SERIALIZABLE` isolation level (impacto global), usar filas/Celery (complexo demais para o volume atual).
+**Motivo:** Proteção pontual onde necessário, sem impactar performance das leituras.
+
+---
+
+## D015 — Sanitização de Markdown (bleach + DOMPurify)
+
+**Data:** Marco/2026
+**Contexto:** Documentos renderizados via `markdown.markdown()` + `|safe` no template e `marked.parse()` + `innerHTML` no JS permitiam XSS.
+**Decisao:** Backend: sanitizar HTML com `bleach.clean()` (whitelist de tags). Frontend: envolver todo `marked.parse()` com `DOMPurify.sanitize()`.
+**Alternativas:** Escapar todo HTML (perde formatação), usar iframe sandbox (complexo).
+**Motivo:** Abordagem em camadas — sanitiza em ambos os lados. Tags de formatação permitidas, scripts bloqueados.
+
+---
+
+## D016 — Django Cache Framework para Dados Hubsoft
+
+**Data:** Marco/2026
+**Contexto:** Cache de clientes por cidade era variável estática na classe (`_cache_clientes_cidade`), não funcionava com múltiplos workers do Gunicorn.
+**Decisao:** Migrar para `django.core.cache` (default LocMemCache, upgrade futuro para Redis). Cache de 1 hora.
+**Alternativas:** Redis direto (overkill para agora), cache no banco (lento).
+**Motivo:** Django cache framework é padrão, funciona com qualquer backend, e a migração para Redis no futuro é transparente.
+
+---
+
+## D017 — Eliminação de N+1 com Annotate em Dict
+
+**Data:** Marco/2026
+**Contexto:** Views de missões, cupons e indicações faziam N queries dentro de loops (1 query por regra/cupom/indicação).
+**Decisao:** Padrão `dict(QuerySet.values_list(...).annotate(...).values_list(...))` para buscar contadores em 1 query e consultar via dict.get().
+**Alternativas:** prefetch_related (não resolve contadores), Subquery (mais verboso).
+**Motivo:** Reduz queries de N+1 para 2 (1 lista + 1 contadores). Simples e legível.
+
+---
+
+## D018 — Logging Estruturado (sem print)
+
+**Data:** Marco/2026
+**Contexto:** Erros eram logados via `print()` (invisível em produção com Gunicorn) e `open('roleta_debug.log')` (gravava CPF/telefone em arquivo no disco).
+**Decisao:** Substituir todos os `print()` por `logging.getLogger(__name__).warning()`. Remover todos os `open('debug.log')`. Configurar loggers por app no settings.
+**Alternativas:** Sentry (custo), ELK stack (complexo demais para o momento).
+**Motivo:** logging stdlib é suficiente, integra com Gunicorn/systemd, sem exposição de dados sensíveis.
